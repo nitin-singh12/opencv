@@ -1,0 +1,19 @@
+{
+  "opencv_zoo_commit": "48b10fa505aeb51fbd127fc60a5c660040e823b7",
+  "files": [
+    {
+      "name": "face_detection_yunet_2026may.onnx",
+      "url": "https://media.githubusercontent.com/media/opencv/opencv_zoo/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/face_detection_yunet/face_detection_yunet_2026may.onnx",
+      "size": 229738,
+      "sha256": "ebafce4e3c118d6554634be5c27ab333b4c047a9a8c3faf1d7cf93101c22f0f0"
+    },
+    {
+      "name": "YUNET-LICENSE",
+      "url": "https://raw.githubusercontent.com/opencv/opencv_zoo/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/face_detection_yunet/LICENSE",
+      "size": 1085,
+      "sha256": "c83b8120c50ccbd4c4f96edf53141bdd566ebb8f8e9227e415326aa1b1aba958"
+    }
+  ],
+  "license": "MIT; Copyright (c) 2020 Shiqi Yu",
+  "runtime_downloads": false
+}

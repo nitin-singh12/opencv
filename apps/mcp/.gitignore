@@ -1,0 +1,15 @@
+.venv/
+.venv-dev/
+.venvs/
+.install-state.json
+mcp-config.json
+.venv-link-*
+__pycache__/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+wheels/
+.upstream/
+.coverage*
+*.log

@@ -1,0 +1,69 @@
+{
+  "coordinate_convention": "[left, top, right, bottom), original pixels; approximate visible facial region including ears, excluding most hair and hats",
+  "method": "Independent manual visual review, performed before reviewing detector outputs",
+  "images": [
+    {
+      "file": "astronaut.png",
+      "sha256": "88431cd9653ccd539741b555fb0a46b61558b301d4110412b5bc28b5e3ea6cb5",
+      "dimensions": [
+        512,
+        512
+      ],
+      "face_count": 1,
+      "faces": [
+        {
+          "box": [
+            176,
+            72,
+            278,
+            184
+          ],
+          "partial_or_occluded": "No; hair overlaps upper forehead",
+          "approximate_boundary_uncertainty_pixels": 8
+        }
+      ]
+    },
+    {
+      "file": "camera.png",
+      "sha256": "b0793d2adda0fa6ae899c03989482bff9a42d3d5690fc7e3648f2795d730c23a",
+      "dimensions": [
+        512,
+        512
+      ],
+      "face_count": 1,
+      "faces": [
+        {
+          "box": [
+            176,
+            119,
+            259,
+            201
+          ],
+          "partial_or_occluded": "Profile; far side not visible; camera close to face",
+          "approximate_boundary_uncertainty_pixels": 10
+        }
+      ]
+    },
+    {
+      "file": "grace_hopper.jpg",
+      "sha256": "a8ca6d734765703b09728ab47fe59f473d93ae3967fc24c7c0288c3c7adb7130",
+      "dimensions": [
+        512,
+        600
+      ],
+      "face_count": 1,
+      "faces": [
+        {
+          "box": [
+            151,
+            127,
+            376,
+            349
+          ],
+          "partial_or_occluded": "Glasses cover portions around eyes; hat covers upper forehead",
+          "approximate_boundary_uncertainty_pixels": 10
+        }
+      ]
+    }
+  ]
+}

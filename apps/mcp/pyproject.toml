@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opencv-bv-tools"
+version = "0.10.0.dev1"
+description = "Modular local image tools with one MCP server"
+readme = "README.md"
+license-files = ["LICENSING.md", "THIRD_PARTY_NOTICES.md", "docs/licenses/*.txt"]
+requires-python = ">=3.10"
+dependencies = ["opencv-python-headless==5.0.0.93", "numpy==2.2.6"]
+
+[project.optional-dependencies]
+test = ["Pillow==12.3.0", "reportlab==4.4.9", "pytest==9.0.2", "build==1.6.1", "coverage==7.17.0; python_version >= '3.11'", "coverage==7.10.7; python_version < '3.11'"]
+adapter = ["mcp==2.3.0"]
+qr = ["zxing-cpp==3.1.1"]
+barcode = ["zxing-cpp==3.1.1"]
+png = ["pyoxipng==9.1.1"]
+png-test = ["pypng==0.20220715.0", "psutil==7.2.2"]
+face = []
+face-test = ["psutil==7.2.2"]
+scanner = []
+cmyk = ["Pillow==12.3.0"]
+scanner-test = ["pypdf==6.10.0", "psutil==7.2.2"]
+barcode-test = ["python-barcode==0.16.1", "psutil==7.2.2", "segno==1.6.6"]
+qr-test = ["segno==1.6.6", "qrcode==8.2", "psutil==7.2.2"]
+qr-benchmark = ["opencv-python-headless==5.0.0.93", "numpy==2.2.6", "psutil==7.2.2"]
+ocr = ["rapidocr==3.10.0+bv.1", "onnxruntime==1.23.2", "opencv-python-headless==5.0.0.93", "numpy==2.2.6"]
+pdf = ["rapidocr==3.10.0+bv.1", "onnxruntime==1.23.2", "opencv-python-headless==5.0.0.93", "numpy==2.2.6", "pypdfium2==5.14.0"]
+mupdf = ["pymupdf==1.28.2"]
+lite = ["mcp==2.3.0", "zxing-cpp==3.1.1", "pyoxipng==9.1.1"]
+all = ["mcp==2.3.0", "zxing-cpp==3.1.1", "pyoxipng==9.1.1", "opencv-python-headless==5.0.0.93", "numpy==2.2.6", "rapidocr==3.10.0+bv.1", "onnxruntime==1.23.2", "pypdfium2==5.14.0"]
+
+[project.scripts]
+opencv-bv-mcp = "opencv_bv_tools.server:main"
+opencv-bv-convert = "opencv_bv_tools.image_conversion:main"
+opencv-bv-qr = "opencv_bv_tools.qr_reader:main"
+opencv-bv-barcode = "opencv_bv_tools.barcode_reader:main"
+opencv-bv-compress-png = "opencv_bv_tools.png_compression:main"
+opencv-bv-blur-faces = "opencv_bv_tools.face_blurring:main"
+opencv-bv-scan-document = "opencv_bv_tools.document_scanner:main"
+opencv-bv-redact-pdf = "opencv_bv_tools.runtime.pdf_redact:main"
+
+[tool.setuptools.package-data]
+opencv_bv_tools = ["models/*.onnx", "models/*LICENSE", "models/*.json"]
+
+[tool.setuptools]
+include-package-data = false
+packages = ["opencv_bv_tools", "opencv_bv_tools.runtime"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+branch = true
+source = ["opencv_bv_tools"]
+patch = ["subprocess"]
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
