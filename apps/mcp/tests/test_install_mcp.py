@@ -240,6 +240,28 @@ def test_bundle_hash_and_path_validation(tmp_path):
         installer.installation_source(tmp_path)
 
 
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_zip_accepts_native_wheel_metadata_line_endings(tmp_path, monkeypatch, newline):
+    spec = importlib.util.spec_from_file_location("build_mcp_zip", REPO / "scripts/build_mcp_zip.py")
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    monkeypatch.setattr(builder, "FILES", {})
+    wheel, companion = tmp_path / "app.whl", tmp_path / "rapidocr.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr("opencv_bv_tools-1.0.dist-info/METADATA", newline.join([
+            "Metadata-Version: 2.4", "Name: opencv-bv-tools", "Version: 1.0",
+            "Requires-Dist: rapidocr==3.10.0+bv.1", "", ""]))
+    with zipfile.ZipFile(companion, "w") as archive:
+        archive.writestr("rapidocr-3.10.0+bv.1.dist-info/METADATA", newline.join([
+            "Metadata-Version: 2.4", "Name: rapidocr", "Version: 3.10.0+bv.1", "", ""]))
+    output = tmp_path / "bundle.zip"
+    builder.build(tmp_path, wheel, output, "a" * 40, rapidocr_wheel=companion)
+    with zipfile.ZipFile(output) as archive:
+        manifest = json.loads(archive.read("opencv-bv-server-mcp/bundle.json"))
+        assert manifest["package_version"] == "1.0"
+        assert manifest["dependency_wheels"][0]["wheel"] == "wheels/rapidocr.whl"
+
+
 def test_zip_is_deterministic_and_excludes_environments(tmp_path):
     spec = importlib.util.spec_from_file_location("build_mcp_zip", REPO / "scripts/build_mcp_zip.py")
     builder = importlib.util.module_from_spec(spec)

@@ -3,6 +3,7 @@
 
 """Build the small installable MCP ZIP from an explicit file allowlist."""
 import argparse
+from email.parser import BytesParser
 import hashlib
 import json
 from pathlib import Path
@@ -71,10 +72,12 @@ def build(root, wheel, output, source_commit, unpublished=False, rapidocr_wheel=
         metadata = [name for name in archive.namelist() if name.endswith(".dist-info/METADATA")]
         if len(metadata) != 1:
             raise ValueError("Expected one wheel metadata file")
-        text = archive.read(metadata[0]).decode()
-        if not re.search(r"(?m)^Name: opencv-bv-tools$", text):
+        metadata = BytesParser().parsebytes(archive.read(metadata[0]), headersonly=True)
+        if metadata["Name"] != "opencv-bv-tools":
             raise ValueError("Wrong package wheel")
-        version = re.search(r"(?m)^Version: (.+)$", text).group(1)
+        version = metadata["Version"]
+        if not version:
+            raise ValueError("Missing package version")
     entries = {name: (root / source).read_bytes() for name, source in FILES.items()}
     for name, source in FILES.items():
         if name.endswith(".md"):
@@ -82,11 +85,13 @@ def build(root, wheel, output, source_commit, unpublished=False, rapidocr_wheel=
     wheel_path = "wheels/" + wheel.name
     entries[wheel_path] = wheel.read_bytes()
     dependencies=[]
-    if "rapidocr==3.10.0+bv.1" in text:
+    if any("rapidocr==3.10.0+bv.1" in requirement
+           for requirement in metadata.get_all("Requires-Dist", [])):
         companion = rapidocr_wheel or root / "wheels/rapidocr-3.10.0+bv.1-py3-none-any.whl"
         with zipfile.ZipFile(companion) as archive:
-            companion_meta = archive.read("rapidocr-3.10.0+bv.1.dist-info/METADATA").decode()
-            if not re.search(r"(?m)^Version: 3\.10\.0\+bv\.1$", companion_meta):
+            companion_meta = BytesParser().parsebytes(
+                archive.read("rapidocr-3.10.0+bv.1.dist-info/METADATA"), headersonly=True)
+            if companion_meta["Name"] != "rapidocr" or companion_meta["Version"] != "3.10.0+bv.1":
                 raise ValueError("Wrong RapidOCR companion wheel")
         dependency_path = "wheels/" + companion.name
         entries[dependency_path] = companion.read_bytes()
