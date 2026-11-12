@@ -32,7 +32,7 @@ def _audit_import(name, *args, **kwargs):
         _busy = True
         try:
             maps = Path('/proc/self/maps').read_text().splitlines()
-            native = sorted({line.split()[-1] for line in maps
+            native = sorted({line.split(maxsplit=5)[-1] for line in maps
                              if '.so' in line and ('/cv2' in line or '/libopencv_' in line)})
             record = dict(pid=os.getpid(), parent_pid=os.getppid(), argv=sys.argv,
                           version=module.__version__, module_file=module.__file__,
