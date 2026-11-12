@@ -1,0 +1,81 @@
+name: MCP native and source validation
+
+on:
+  push:
+    branches: [mcp-vision-tools]
+    paths: ['apps/mcp/**', '.github/workflows/mcp-vision-tools.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mcp-validation-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: '1'
+  PYTHONNOUSERSITE: '1'
+  PYTHONUNBUFFERED: '1'
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  PIP_NO_CACHE_DIR: '1'
+  UV_NO_CACHE: '1'
+
+jobs:
+  linux:
+    if: ${{ github.repository == 'nitin-singh12/opencv' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    outputs:
+      payload_sha256: ${{ steps.validate.outputs.payload_sha256 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - id: validate
+        name: Build ZIP, clean install and native contracts
+        run: python apps/mcp/dev/validate_package.py --work "$RUNNER_TEMP/mcp-validation"
+
+  native:
+    needs: linux
+    if: ${{ github.repository == 'nitin-singh12/opencv' && github.event.repository.private == false }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-2022, macos-15]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    steps:
+      - name: Preserve checkout line endings
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+          architecture: ${{ matrix.runner == 'macos-15' && 'arm64' || 'x64' }}
+      - name: Build ZIP, clean install and native contracts
+        shell: bash
+        env:
+          EXPECTED_PAYLOAD_SHA256: ${{ needs.linux.outputs.payload_sha256 }}
+        run: python apps/mcp/dev/validate_package.py --work "$RUNNER_TEMP/mcp-validation"
+
+  source:
+    needs: linux
+    if: ${{ github.repository == 'nitin-singh12/opencv' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Prepare isolated package environment
+        run: python apps/mcp/dev/validate_package.py --prepare-only --work "$RUNNER_TEMP/mcp-validation"
+      - name: Compile OpenCV and verify native C++ and nine MCP tools
+        run: python apps/mcp/dev/validate_opencv_source.py --work "$RUNNER_TEMP/mcp-validation"

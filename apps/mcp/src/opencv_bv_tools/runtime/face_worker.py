@@ -6,9 +6,11 @@
 import base64
 import hashlib
 from importlib import resources
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 import json
 import math
+import os
+from pathlib import Path
 from .process_support import peak_rss_kib
 import sys
 import time
@@ -29,6 +31,20 @@ from opencv_bv_tools.runtime.opaque_image import normalize_opaque_image as norma
 
 MAX_CANDIDATES = 512
 SCALES = (320, 640)
+
+
+def opencv_version(cv):
+    """Keep the wheel pin; allow an explicit, isolated source-build experiment."""
+    try:
+        installed = version("opencv-python-headless")
+    except PackageNotFoundError:
+        prefix = os.environ.get("OPENCV_BV_SOURCE_BUILD")
+        if (prefix and Path(prefix).is_absolute()
+                and Path(cv.__file__).resolve().is_relative_to(Path(prefix).resolve())
+                and cv.__version__.startswith("5.")):
+            return cv.__version__ + " (source build)"
+        return None
+    return installed if installed == "5.0.0.93" else None
 
 
 def inverse_box(box, size, rotation, resized):
@@ -243,7 +259,8 @@ def process(data, options):
         import numpy as np
     except ImportError:
         return _failure("missing_face_dependency")
-    if version("opencv-python-headless") != "5.0.0.93":
+    backend_version = opencv_version(cv)
+    if backend_version is None:
         return _failure("unsupported_detector_version")
     try:
         model = model_bytes()
@@ -291,7 +308,7 @@ def process(data, options):
         output_sha256=hashlib.sha256(encoded).hexdigest(),
         backend={
             "name": "YuNet",
-            "opencv": version("opencv-python-headless"),
+            "opencv": backend_version,
             "model_sha256": MODEL_SHA256,
             "scales": list(SCALES),
             "rotations": [0, 90, 180, 270],

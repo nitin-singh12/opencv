@@ -30,7 +30,7 @@ import sys
 import tempfile
 
 packages = ["opencv-bv-tools", "Pillow", "mcp", "zxing-cpp", "pyoxipng",
-            "reportlab", "charset-normalizer", "opencv-python-headless", "numpy",
+            "reportlab", "requests", "charset-normalizer", "opencv-python-headless", "numpy",
             "rapidocr", "onnxruntime", "pypdfium2", "segno"]
 versions = {}
 for name in packages:
@@ -63,7 +63,8 @@ try:
                 "blur_faces", "scan_document", "find_emails", "redact_emails", "redact_pdf"}
     heavy = sorted(set(sys.modules) & {"cv2", "numpy", "rapidocr", "onnxruntime", "pypdfium2", "pymupdf"})
     result.update(tools=names, heavy_imports=heavy)
-    missing = [name for name, version in versions.items() if version is None and name != "segno"]
+    optional = {"Pillow", "reportlab", "requests", "charset-normalizer", "segno"}
+    missing = [name for name, version in versions.items() if version is None and name not in optional]
     result["missing_runtime_dependencies"] = missing
     result["status"] = "registration_only_passed" if set(names) == expected and not heavy and not missing else "blocked"
 except Exception as error:

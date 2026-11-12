@@ -199,6 +199,28 @@ def test_region_cap_and_dependency_faults(monkeypatch):
     assert worker.process(data,options())['stop_reason']=='unsupported_detector_version'
 
 
+def test_source_build_requires_explicit_matching_prefix(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    def absent(name):
+        raise worker.PackageNotFoundError(name)
+
+    monkeypatch.setattr(worker, 'version', absent)
+    candidate = SimpleNamespace(__file__=str(tmp_path / 'cv2/__init__.py'), __version__='5.0.0-dev')
+    monkeypatch.delenv('OPENCV_BV_SOURCE_BUILD', raising=False)
+    assert worker.opencv_version(candidate) is None
+    monkeypatch.setenv('OPENCV_BV_SOURCE_BUILD', str(tmp_path))
+    assert worker.opencv_version(candidate) == '5.0.0-dev (source build)'
+    candidate.__file__ = str(tmp_path.parent / 'other/cv2/__init__.py')
+    assert worker.opencv_version(candidate) is None
+    candidate.__file__ = str(tmp_path / 'cv2/__init__.py')
+    candidate.__version__ = '4.12.0'
+    assert worker.opencv_version(candidate) is None
+    candidate.__version__ = '5.0.0-dev'
+    monkeypatch.setattr(worker, 'version', lambda name: 'unexpected')
+    assert worker.opencv_version(candidate) is None
+
+
 def test_bundled_model_integrity_and_tamper(monkeypatch):
     assert len(worker.model_bytes())==229738
     monkeypatch.setattr(worker,'MODEL_SHA256','0'*64)

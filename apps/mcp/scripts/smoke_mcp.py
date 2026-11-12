@@ -13,6 +13,7 @@ import base64
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -52,8 +53,9 @@ async def exercise(work, fixtures, pdf_engine="picture"):
     email = work / "email.png"
     email.write_bytes((fixtures / "smoke/email.png").read_bytes())
     originals = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in (qr, barcode, face, email)}
+    source_env = {key: os.environ[key] for key in ("OPENCV_BV_SOURCE_BUILD",) if key in os.environ}
     server = StdioServerParameters(command=sys.executable, args=["-c", LAUNCH, "--allow-dir", str(work),
-                                                               "--pdf-engine", pdf_engine])
+                                                               "--pdf-engine", pdf_engine], env=source_env)
     observations = {}
     started = time.perf_counter()
     async with stdio_client(server) as (read, write):
