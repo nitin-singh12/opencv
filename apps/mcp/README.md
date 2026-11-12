@@ -36,6 +36,12 @@ Use **Python 3.12**. The current lightweight variant has Linux x86-64 validation
 Windows x64 and macOS arm64 setup paths are provided, but this variant still needs
 native tests there. Earlier branch results do not certify this version.
 
+The native validation workflow builds and installs this exact branch on Linux
+x86-64, Windows x64 and Apple Silicon macOS with Python 3.12. Its Linux source
+job additionally compiles OpenCV from this checkout and tests MCP against that
+build. Consult the workflow's individual job results; a wheel build alone does
+not establish native runtime or source-build compatibility.
+
 From the repository root, enter `apps/mcp`. First build the required RapidOCR
 companion wheel. It makes Pillow and HTTP helpers optional without changing the
 OCR algorithms or model bytes. The builder checks the upstream wheel's SHA-256.

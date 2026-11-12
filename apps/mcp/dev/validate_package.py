@@ -141,8 +141,9 @@ def validate(work, prepare_only=False):
         print("DEFAULT INSTALL " + json.dumps(report["default_install"], sort_keys=True), flush=True)
         run([installed, "-m", "ensurepip", "--upgrade"], cwd=work)
         if not prepare_only:
-            # Pillow is an independent TEST oracle, absent during the preceding runtime checks.
-            run([installed, "-m", "pip", "install", "pytest==9.0.2", "psutil==7.2.2", "Pillow==12.3.0"], cwd=work)
+            # Independent TEST oracles, absent during the preceding runtime checks.
+            run([installed, "-m", "pip", "install", "pytest==9.0.2", "psutil==7.2.2",
+                 "Pillow==12.3.0", "reportlab==4.4.9"], cwd=work)
             shutil.copytree(ROOT / "tests", extracted / "tests", dirs_exist_ok=True)
             shutil.copyfile(ROOT / "scripts/build_mcp_zip.py", extracted / "scripts/build_mcp_zip.py")
             run([installed, "-m", "pytest", "-q", "-ra", "tests/test_install_mcp.py",
