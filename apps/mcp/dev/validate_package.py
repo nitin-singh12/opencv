@@ -147,6 +147,8 @@ def validate(work, prepare_only=False):
             shutil.copytree(ROOT / "tests", extracted / "tests", dirs_exist_ok=True)
             shutil.copyfile(ROOT / "scripts/build_mcp_zip.py", extracted / "scripts/build_mcp_zip.py")
             shutil.copyfile(ROOT / "pyproject.toml", extracted / "pyproject.toml")
+            (extracted / "dist").mkdir()
+            shutil.copyfile(wheel, extracted / "dist" / wheel.name)
             run([installed, "-m", "pytest", "-q", "-ra", "tests/test_install_mcp.py",
                  "tests/test_native_runtime.py", "tests/test_ocr_process.py", "tests/test_unified_protocol.py",
                  "tests/test_face_blurring.py", "--junitxml", work / "tests.xml"], cwd=extracted, timeout=900)
