@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Local image tools. Importing the package does not start an MCP server."""
 
 __all__ = ["ConversionError", "ConversionResult", "convert_image"]

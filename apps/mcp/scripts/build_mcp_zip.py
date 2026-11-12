@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Build the small installable MCP ZIP from an explicit file allowlist."""
 import argparse
 import hashlib
@@ -11,6 +14,7 @@ import zipfile
 FILES = {
     'install.sh': 'install.sh',
     'README.md': 'README.md',
+    'LICENSE': 'LICENSE',
     'LICENSING.md': 'LICENSING.md',
     'PROVENANCE.json': 'PROVENANCE.json',
     'THIRD_PARTY_NOTICES.md': 'THIRD_PARTY_NOTICES.md',

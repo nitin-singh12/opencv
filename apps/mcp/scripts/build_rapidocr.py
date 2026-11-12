@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Build our array-only RapidOCR wheel from the unchanged, hash-pinned upstream wheel.
 
 No network access, model changes, or dependency-resolution bypass. Download the

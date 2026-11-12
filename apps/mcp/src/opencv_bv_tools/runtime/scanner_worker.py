@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Private image normalization and bounded lossless PDF worker."""
 
 import base64

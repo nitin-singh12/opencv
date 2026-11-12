@@ -6,8 +6,9 @@ uses a pinned `opencv-python-headless` wheel; it does not build or extend `cv2`
 from this checkout. No OpenCV CMake files are changed. This is not an official
 OpenCV release or an accepted upstream contribution.
 
-**Status:** version `0.10.0.dev1`, prepared locally on `dev-lightweight`.
-Publication awaits the application's licence decision; see [LICENSING.md](LICENSING.md).
+**Status:** experimental version `0.10.0.dev1` on `dev-lightweight`.
+Application code uses Apache-2.0; bundled models and dependencies retain their
+own terms. See [LICENSE](LICENSE) and [LICENSING.md](LICENSING.md).
 Source commits and imported file hashes are recorded in [PROVENANCE.json](PROVENANCE.json).
 
 ## Nine MCP tools
@@ -220,3 +221,24 @@ To uninstall, remove this server from your MCP client's settings before deleting
 its installation folder. For the optional CLI registrations use
 `claude mcp remove --scope user opencv-bv-server` or
 `codex mcp remove opencv-bv-server`. Your output folder is separate and remains.
+
+## Contributing in this fork
+
+Use a focused branch based on OpenCV `5.x`. Keep this independently installed
+Python application under `apps/mcp`; its dependencies must not become mandatory
+for an ordinary OpenCV CMake build. Keep one MCP entry point and put feature
+logic in its existing module. Use UTF-8, LF line endings, spaces and four-space
+Python indentation. Preserve existing source and third-party licence notices.
+
+For a change, update its documentation and run the affected tests plus the MCP
+smoke check. Include reproducible inputs, expected results and actual validation
+limits. Reuse existing fixtures when possible. New algorithms, a change to this
+application's upstream location, or integration with OpenCV's native tests need
+maintainer discussion before an upstream submission.
+
+Follow OpenCV's [contribution guidelines](https://github.com/opencv/opencv/wiki/How_to_contribute)
+and the applicable parts of its [coding guide](https://github.com/opencv/opencv/wiki/Coding_Style_Guide).
+The latter describes C++ modules; it is not a requirement to rewrite this Python
+application or apply C++ naming rules to it. This fork does not establish an
+official OpenCV MCP packaging convention. Native platform validation and the
+known failures above remain work before an upstream or stable-release claim.

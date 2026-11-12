@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Strictly lossless, bounded PNG recompression in a disposable Linux worker."""
 
 import argparse

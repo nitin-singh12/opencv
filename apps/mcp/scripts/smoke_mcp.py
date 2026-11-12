@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Exercise all nine tools through MCP stdio using synthetic/local fixtures.
 
 Run with the all and qr-test extras installed. --fixtures defaults to this

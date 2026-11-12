@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Bounded, offline QR reading in a disposable native-code worker (Linux)."""
 
 import argparse

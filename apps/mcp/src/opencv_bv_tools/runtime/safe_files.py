@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Safe reading and writing of files (screenshots and PDFs), shared by the MCP
 server and the command line.
 

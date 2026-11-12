@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Shared bounded subprocess transport and limits for local image readers."""
 
 from dataclasses import dataclass

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Conservative native Windows file access for the MCP server.
 
 The first native candidate accepts plain paths on local NTFS volumes. It

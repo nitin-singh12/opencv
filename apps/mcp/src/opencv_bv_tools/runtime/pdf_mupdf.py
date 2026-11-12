@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """True redaction of PDFs with MuPDF: an optional engine for pdf_redact.py.
 
 With this engine the redacted PDF stays the original PDF: same text, fonts,

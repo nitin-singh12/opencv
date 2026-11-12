@@ -1,7 +1,7 @@
 # Third-party notices
 
-This index describes dependencies and bundled assets for `0.10.0.dev1`. It does
-not assign a licence to the application; see [LICENSING.md](LICENSING.md). Preserve
+This index describes dependencies and bundled assets for `0.10.0.dev1`. The
+application uses Apache-2.0; see [LICENSING.md](LICENSING.md). Preserve
 the full notices in each installed distribution, including native components.
 Headline licence names alone are not a complete redistribution review.
 
@@ -42,7 +42,7 @@ It supplements the previously inspected wheel that omitted its licence file.
 - Smoke PNG/PDF/QR files use synthetic content. See
   [fixture notes](tests/fixtures/smoke/README.md). No font program is embedded in
   the smoke PDF. Barcode regression PNGs were generated with bwip-js/BWIPP;
-  generated project fixtures remain part of the application's rights review.
+  externally sourced fixture attribution remains in the fixture records.
 
 ## Modified RapidOCR companion
 

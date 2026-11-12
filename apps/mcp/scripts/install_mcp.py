@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Install the unified server without modifying the previous working environment."""
 import argparse
 import hashlib

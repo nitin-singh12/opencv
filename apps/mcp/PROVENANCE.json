@@ -6,7 +6,6 @@
   "package_version": "0.10.0.dev1",
   "integration_branch": "dev-lightweight",
   "integration_kind": "Independent Python application under apps/mcp; OpenCV CMake and cv2 are unchanged. Uses a pinned OpenCV Python wheel, not a build from this checkout.",
-  "publication_status": "Local preparation; own-package licence decision pending.",
   "copied_files_sha256": {
     "dev/check_platform.py": "c68b292623cab26e5e88a4bb2c088af72d9e678f9d1421d417b7e738c2424f99",
     "docs/licenses/FLATBUFFERS-LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
@@ -110,6 +109,8 @@
     "Conversion adapter tests reuse bundled synthetic smoke image",
     "ZIP includes only subproject material and public model/fixture notices",
     "New README and licensing boundary; no private history, reports, logs or external corpora",
-    "Wheel metadata includes subproject licensing boundary and third-party notices; build backend minimum raised for standard licence-file metadata"
-  ]
+    "Wheel metadata includes subproject licensing boundary and third-party notices; build backend minimum raised for standard licence-file metadata",
+    "OpenCV contribution licensing and source headers; SPDX distribution metadata includes the bundled MIT model; no algorithm or model changes"
+  ],
+  "distribution_license": "Application Apache-2.0; bundled YuNet MIT; dependencies and externally sourced fixtures retain their own terms."
 }

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Serialized OCR subprocess with bounded binary frames and idle retirement.
 
 Each frame is one UTF-8 JSON line followed by exactly the declared number of

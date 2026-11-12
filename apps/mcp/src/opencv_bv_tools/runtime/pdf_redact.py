@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Find email addresses in a PDF and cover them with solid boxes.
 
 Every page is drawn as a picture, the way a PDF viewer shows it, and the

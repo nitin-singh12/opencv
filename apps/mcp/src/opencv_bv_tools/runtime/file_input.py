@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Bounded regular-file reads for trusted-local command-line readers."""
 import os
 from pathlib import Path

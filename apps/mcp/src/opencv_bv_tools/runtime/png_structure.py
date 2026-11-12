@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Bounded PNG structural checks, not a full PNG/ICC/EXIF conformance validator."""
 from dataclasses import dataclass
 import struct

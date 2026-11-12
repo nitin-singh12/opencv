@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Shared input policy: bounded still images and visible, oriented luminance."""
 
 from .image_io import ImageLimitError, decode, opaque, luminance

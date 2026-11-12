@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Bounded image admission and OpenCV codecs. Arrays are uint8 RGB/RGBA.
 
 This module imports no native libraries until a codec/array operation is called.

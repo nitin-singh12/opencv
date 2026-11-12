@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Operating-system details shared by workers; no image libraries are imported."""
 
 import contextlib

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Shared atomic output for trusted-local CLIs; MCP uses its access policy."""
 
 import os

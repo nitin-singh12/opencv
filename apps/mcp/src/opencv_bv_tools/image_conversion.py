@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Convert bounded, single-frame image bytes without filesystem or network access."""
 
 import argparse

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Windows worker containment and bounded binary pipes (Python 3.12+).
 
 Workers wait on a private gate until attached to a kill-on-close Job Object.

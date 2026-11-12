@@ -51,7 +51,8 @@ with `free(): invalid pointer`; repeating the nine-tool smoke check in that same
 installed environment passed. The cause of the first crash remains unresolved.
 These results support local evaluation, not a stable-release claim.
 
-Native Windows/macOS tests must be rerun for this version. Complete the
-application licence decision and verify exact release artifacts before public
-distribution. GitHub Actions is disabled on the personal fork; no CI workflow
-is added by this subproject.
+Native Windows/macOS tests must be rerun for this version. The application now
+uses Apache-2.0, with third-party terms retained separately. Investigate the
+known failures and verify exact release artifacts before a stable release.
+GitHub Actions is disabled on the personal fork; no CI workflow is added by
+this subproject.

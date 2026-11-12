@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """One stdio MCP server; each feature owns its own implementation and adapter."""
 
 import argparse

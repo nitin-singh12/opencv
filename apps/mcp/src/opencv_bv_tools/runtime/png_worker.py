@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Private PNG worker: decode/optimize/verify; never receives filenames."""
 
 import base64

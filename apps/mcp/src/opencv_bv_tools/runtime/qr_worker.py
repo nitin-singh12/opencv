@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# See the LICENSE file distributed with this application for license terms.
+
 """Private JSON/stdin protocol. Image parsing and native decoding stay here."""
 
 import base64
