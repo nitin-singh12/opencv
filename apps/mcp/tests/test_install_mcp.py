@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 tomllib = pytest.importorskip("tomllib")
-pytestmark = pytest.mark.skipif(sys.version_info[:2] != (3, 12) or sys.platform != "linux",
+pytestmark = pytest.mark.skipif(sys.version_info[:2] != (3, 12) or sys.platform == "win32",
                                 reason="these registration fakes use POSIX executable scripts; native tests are separate")
 
 REPO = Path(__file__).resolve().parents[1]

@@ -25,7 +25,11 @@ Source commits and imported file hashes are recorded in [PROVENANCE.json](PROVEN
 | `redact_emails` | Covers detected email addresses in black | Image path or encoded image; separate PNG or returned image | Email addresses only; review before sharing |
 | `redact_pdf` | Redacts email addresses in PDF pages | PDF path, optional separate output path; PDF and counts | Default engine rasterizes pages; editable text, links and forms are not preserved |
 
-Original inputs are preserved. Existing outputs require an explicit overwrite.
+Original inputs are preserved. On Linux/macOS, replacing an existing output
+requires an explicit overwrite. The Windows candidate currently requires a new
+output filename, local NTFS paths shorter than 240 characters, and no links or
+junctions. These restrictions remain in place while Windows file-safety support
+is qualified.
 Image conversion and document creation are not privacy filters. Face blur and
 email redaction are detection tools, not guarantees that all sensitive content
 has been removed.

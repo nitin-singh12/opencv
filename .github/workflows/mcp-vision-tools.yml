@@ -49,7 +49,9 @@ jobs:
     timeout-minutes: 35
     steps:
       - name: Preserve checkout line endings
-        run: git config --global core.autocrlf false
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false

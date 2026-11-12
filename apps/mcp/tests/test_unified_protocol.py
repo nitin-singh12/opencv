@@ -1,6 +1,7 @@
 """Real MCP cancellation must reap the worker and leave outputs untouched."""
 import asyncio
 import json
+import os
 from pathlib import Path
 import sys
 import time
@@ -12,10 +13,14 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
-def test_cancel_native_worker_and_recover(tmp_path):
+@pytest.mark.parametrize("overwrite", [False, True])
+def test_cancel_native_worker_and_recover(tmp_path, overwrite):
+    if os.name == "nt" and overwrite:
+        pytest.skip("Windows currently refuses overwriting existing outputs")
     source, output = tmp_path / "source.png", tmp_path / "out.png"
     Image.new("RGB", (16, 16), "white").save(source)
-    output.write_bytes(b"keep original output")
+    if overwrite:
+        output.write_bytes(b"keep original output")
     pidfile = tmp_path / "child.pid"
     launcher = tmp_path / "slow_server.py"
     child = f"import os,time;from pathlib import Path;Path({str(pidfile)!r}).write_text(str(os.getpid()));time.sleep(20)"
@@ -32,7 +37,7 @@ def test_cancel_native_worker_and_recover(tmp_path):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 pending = asyncio.create_task(session.call_tool("compress_png", {
-                    "image_path": str(source), "output_path": str(output), "overwrite": True, "timeout_seconds": 10.0}))
+                    "image_path": str(source), "output_path": str(output), "overwrite": overwrite, "timeout_seconds": 10.0}))
                 deadline = time.monotonic() + 5
                 while not pidfile.exists() and time.monotonic() < deadline:
                     await asyncio.sleep(0.01)
@@ -45,7 +50,10 @@ def test_cancel_native_worker_and_recover(tmp_path):
                 while psutil.pid_exists(pid) and time.monotonic() < deadline:
                     await asyncio.sleep(0.02)
                 assert not psutil.pid_exists(pid), "cancelled worker was not reaped"
-                assert output.read_bytes() == b"keep original output"
+                if overwrite:
+                    assert output.read_bytes() == b"keep original output"
+                else:
+                    assert not output.exists()
                 assert not list(tmp_path.glob(".email-redact-*.tmp"))
                 response = await session.call_tool("convert_image_format", {
                     "image_path": str(source), "output_path": str(tmp_path / "recovered.webp")})
@@ -54,17 +62,21 @@ def test_cancel_native_worker_and_recover(tmp_path):
 
 
 @pytest.mark.parametrize("phase", ["render", "native_ocr"])
-def test_cancel_pdf_tree_then_recover(tmp_path, phase):
+@pytest.mark.parametrize("overwrite", [False, True])
+def test_cancel_pdf_tree_then_recover(tmp_path, phase, overwrite):
+    if os.name == "nt" and overwrite:
+        pytest.skip("Windows currently refuses overwriting existing outputs")
     from reportlab.pdfgen import canvas
     source, output = tmp_path / "source.pdf", tmp_path / "output.pdf"
     document = canvas.Canvas(str(source), pagesize=(360,180))
     document.drawString(20,100,"Contact support@example.com")
     document.save()
-    output.write_bytes(b"keep existing output")
+    if overwrite:
+        output.write_bytes(b"keep existing output")
     marker = tmp_path / "pdf-pids.json"
     child = tmp_path / "pdf_child.py"
     child.write_text(
-        "import ctypes,json,os,runpy,signal,tempfile\nfrom pathlib import Path\n"
+        "import ctypes,json,os,psutil,runpy,signal,tempfile\nfrom pathlib import Path\n"
         "from opencv_bv_tools.runtime import pdf_worker as _pdf_worker\noriginal=_pdf_worker.process_pdf\n"
         f"marker=Path({str(marker)!r})\n"
         "def controlled(data,options,state,get_engine,progress):\n"
@@ -73,10 +85,10 @@ def test_cancel_pdf_tree_then_recover(tmp_path, phase):
         "    with tempfile.TemporaryFile() as f:\n"
         "        f.write(data);f.seek(0);pages=pdf.Pages(f,max_pixels=40000000)\n"
         "        try:\n"
-        + ("            os.kill(pages.proc.pid,signal.SIGSTOP)\n" if phase == "render" else
-           "            signal.signal(signal.SIGTERM,signal.SIG_IGN)\n")
+        + ("            psutil.Process(pages.proc.pid).suspend()\n" if phase == "render" else
+           "            if os.name != 'nt': signal.signal(signal.SIGTERM,signal.SIG_IGN)\n")
         + "            marker.write_text(json.dumps([os.getpid(),pages.proc.pid]))\n"
-        + ("            pages.page(0)\n" if phase == "render" else "            ctypes.CDLL(None).pause()\n")
+        + ("            pages.page(0)\n" if phase == "render" else "            ctypes.WinDLL('kernel32').Sleep(30000) if os.name == 'nt' else ctypes.CDLL(None).pause()\n")
         + "        finally: pages.close()\n"
         "_pdf_worker.process_pdf=controlled\nrunpy.run_module('opencv_bv_tools.runtime.ocr_worker',run_name='__main__')\n"
     )
@@ -92,7 +104,7 @@ def test_cancel_pdf_tree_then_recover(tmp_path, phase):
         async with stdio_client(params) as (read,write):
             async with ClientSession(read,write) as session:
                 await session.initialize()
-                task=asyncio.create_task(session.call_tool('redact_pdf',{'pdf_path':str(source),'output_path':str(output),'overwrite':True}))
+                task=asyncio.create_task(session.call_tool('redact_pdf',{'pdf_path':str(source),'output_path':str(output),'overwrite':overwrite}))
                 deadline=time.monotonic()+10
                 while not marker.exists() and time.monotonic()<deadline: await asyncio.sleep(0.01)
                 assert marker.exists()
@@ -105,9 +117,12 @@ def test_cancel_pdf_tree_then_recover(tmp_path, phase):
                 while (psutil.pid_exists(worker) or not stopped(helper)) and time.monotonic()<deadline:
                     await asyncio.sleep(0.02)
                 assert not psutil.pid_exists(worker) and stopped(helper)
-                assert output.read_bytes()==b'keep existing output'
+                if overwrite:
+                    assert output.read_bytes()==b'keep existing output'
+                else:
+                    assert not output.exists()
                 assert not list(tmp_path.glob('.email-redact-*.tmp'))
-                result=await session.call_tool('redact_pdf',{'pdf_path':str(source),'output_path':str(output),'overwrite':True})
+                result=await session.call_tool('redact_pdf',{'pdf_path':str(source),'output_path':str(output),'overwrite':overwrite})
                 assert not result.is_error, result.content
                 assert output.read_bytes().startswith(b'%PDF-')
     asyncio.run(exercise())

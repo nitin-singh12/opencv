@@ -310,7 +310,9 @@ def test_destination_guards(tmp_path,kind):
     elif kind=='hardlink':os.link(src,out)
     elif kind=='symlink':out.symlink_to(src)
     elif kind=='directory':out.mkdir()
-    elif kind=='fifo':os.mkfifo(out)
+    elif kind=='fifo':
+        if not hasattr(os, 'mkfifo'): pytest.skip('POSIX FIFO path contract')
+        os.mkfifo(out)
     elif kind=='readonly':out.write_bytes(b'old');out.chmod(0o444)
     else:out=tmp_path/'out.jpg'
     with pytest.raises((api.FaceBlurError,OSError)):face_cli.blur_file(src,out,overwrite=True)
@@ -326,9 +328,16 @@ def test_real_cli_success_and_no_faces_does_not_claim_old_output(tmp_path):
     assert run.returncode==2 and 'output' not in json.loads(run.stdout) and out.read_bytes()==original
 
 
-def test_cli_rejects_non_regular_input_and_invalid_options(tmp_path):
-    src=tmp_path/'fifo';os.mkfifo(src)
-    with pytest.raises(api.FaceBlurError):face_cli.blur_file(src,tmp_path/'out.png')
+@pytest.mark.parametrize('kind', ['directory', 'fifo'])
+def test_cli_rejects_non_regular_input_and_invalid_options(tmp_path, kind):
+    src=tmp_path/kind
+    if kind == 'fifo':
+        if not hasattr(os, 'mkfifo'): pytest.skip('POSIX FIFO path contract')
+        os.mkfifo(src)
+    else:
+        src.mkdir()
+    with pytest.raises((api.FaceBlurError, OSError)):face_cli.blur_file(src,tmp_path/'out.png')
+    assert not (tmp_path/'out.png').exists()
     for kwargs in [{'overwrite':1},{'limits':{}},{'limits':api.FaceLimits(max_pixels=0)}]:
         with pytest.raises(api.FaceBlurError):face_cli.blur_file(src,tmp_path/'out.png',**kwargs)
 
@@ -373,4 +382,5 @@ def test_child_reaped_after_timeout(tmp_path):
     command=[sys.executable,'-c',f'import os,time;open({str(pidfile)!r},"w").write(str(os.getpid()));time.sleep(5)']
     result=api._run_worker(b'x',options(),timeout=.2,command=command)
     assert result['stop_reason']=='deadline_exceeded'
-    with pytest.raises(ProcessLookupError):os.kill(int(pidfile.read_text()),0)
+    import psutil
+    assert not psutil.pid_exists(int(pidfile.read_text()))
