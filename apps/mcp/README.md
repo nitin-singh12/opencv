@@ -6,7 +6,7 @@ uses a pinned `opencv-python-headless` wheel; it does not build or extend `cv2`
 from this checkout. No OpenCV CMake files are changed. This is not an official
 OpenCV release or an accepted upstream contribution.
 
-**Status:** experimental version `0.10.0.dev1` on `dev-lightweight`.
+**Status:** experimental version `0.10.0.dev1` on `mcp`.
 Application code uses Apache-2.0; bundled models and dependencies retain their
 own terms. See [LICENSE](LICENSE) and [LICENSING.md](LICENSING.md).
 Source commits and imported file hashes are recorded in [PROVENANCE.json](PROVENANCE.json).

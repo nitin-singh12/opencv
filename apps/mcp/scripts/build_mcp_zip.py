@@ -56,7 +56,7 @@ def bundle_document(data, source, destination, unpublished=False):
             # Local preparation can contain paths that have not been published yet.
             return f"{label} (source checkout: `{source_target}`)"
         else:
-            link = "https://github.com/nitin-singh12/opencv/blob/dev-lightweight/apps/mcp/" + quote(source_target)
+            link = "https://github.com/nitin-singh12/opencv/blob/mcp/apps/mcp/" + quote(source_target)
         if parsed.fragment:
             link += "#" + parsed.fragment
         return f"[{label}]({link})"

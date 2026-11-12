@@ -4,7 +4,7 @@
   "upstream_commit": "247ea5144d5ecaf676a6f952b2eb985f77140053",
   "package_source_commit": "345f1ced51b5fbda8a4753ef10fef8ee1ec6233a",
   "package_version": "0.10.0.dev1",
-  "integration_branch": "dev-lightweight",
+  "integration_branch": "mcp",
   "integration_kind": "Independent Python application under apps/mcp; OpenCV CMake and cv2 are unchanged. Uses a pinned OpenCV Python wheel, not a build from this checkout.",
   "copied_files_sha256": {
     "dev/check_platform.py": "c68b292623cab26e5e88a4bb2c088af72d9e678f9d1421d417b7e738c2424f99",
