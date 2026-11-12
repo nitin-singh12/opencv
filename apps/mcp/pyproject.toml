@@ -14,7 +14,7 @@ dependencies = ["opencv-python-headless==5.0.0.93", "numpy==2.2.6"]
 
 [project.urls]
 Repository = "https://github.com/nitin-singh12/opencv"
-Documentation = "https://github.com/nitin-singh12/opencv/blob/mcp/apps/mcp/README.md"
+Documentation = "https://github.com/nitin-singh12/opencv/blob/mcp-vision-tools/apps/mcp/README.md"
 
 [project.optional-dependencies]
 test = ["Pillow==12.3.0", "reportlab==4.4.9", "pytest==9.0.2", "build==1.6.1", "coverage==7.17.0; python_version >= '3.11'", "coverage==7.10.7; python_version < '3.11'"]
