@@ -219,8 +219,8 @@ def companion_wheels(root):
             paths.append(path)
         return paths
     project=root / "pyproject.toml"
-    if project.exists() and "rapidocr==3.10.0+bv.2" in project.read_text():
-        path=root / "wheels/rapidocr-3.10.0+bv.2-py3-none-any.whl"
+    if project.exists() and "rapidocr==3.10.0+bv.3" in project.read_text():
+        path=root / "wheels/rapidocr-3.10.0+bv.3-py3-none-any.whl"
         if not path.is_file():
             raise InstallError("Build the companion OCR wheel first; follow docs/lightweight-branch.md.")
         return [path]

@@ -10,6 +10,7 @@ import hashlib
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 
 MODELS = {
@@ -31,12 +32,11 @@ def _verified_bytes(path, digest):
     return data
 
 
-def _model_path(role):
+def _model_bytes(role):
     import rapidocr
     name, digest = MODELS[role]
     path = Path(rapidocr.__file__).parent / "models" / name
-    _verified_bytes(path, digest)
-    return path
+    return _verified_bytes(path, digest)
 
 
 def _characters():
@@ -51,7 +51,7 @@ def _characters():
 def check_models():
     """Verify the installed weights/dictionary without fetching replacements."""
     for role in MODELS:
-        _model_path(role)
+        _model_bytes(role)
     _characters()
 
 
@@ -64,7 +64,10 @@ class OpenCVSession:
                 or cfg.model_type.value != "small" or cfg.lang_type.value != "ch"):
             raise ValueError("OpenCV OCR supports only the bundled v6-small detector and recognizer.")
         self.characters = _characters() if self.role == "rec" else None
-        self.net = cv2.dnn.readNetFromONNX(str(_model_path(self.role)))
+        # Python reads Unicode paths consistently; OpenCV receives the same
+        # verified bytes directly instead of opening a platform-specific path.
+        model = np.frombuffer(_model_bytes(self.role), dtype=np.uint8)
+        self.net = cv2.dnn.readNetFromONNX(model)
         self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
         self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
 

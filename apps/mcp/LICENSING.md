@@ -14,7 +14,7 @@ it does not offer a choice of licence for each component. The full YuNet MIT
 notice remains beside the model and in the distribution's licence files.
 
 The companion RapidOCR wheel remains a separately identified modified upstream
-distribution, `3.10.0+bv.2`. Its Apache-2.0 licence, model attribution and
+distribution, `3.10.0+bv.3`. Its Apache-2.0 licence, model attribution and
 modification notice are preserved. The application also includes a recognition
 dictionary extracted from the bundled PP-OCRv6 model metadata; it retains the
 model's Apache-2.0 terms and attribution, with its

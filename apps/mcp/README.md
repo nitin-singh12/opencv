@@ -7,11 +7,12 @@ job builds OpenCV from this checkout and tests the application against that buil
 No OpenCV CMake files are changed. This is not an official
 OpenCV release or an accepted upstream contribution.
 
-**Status:** experimental version `0.10.0.dev2` on `mcp-vision-tools`.
-Email OCR now uses OpenCV DNN on CPU. A clean Linux ZIP installation passed all
+**Status:** experimental version `0.10.0.dev3` on `mcp-vision-tools`.
+Email OCR uses OpenCV DNN on CPU. The preceding `0.10.0.dev2` Linux ZIP passed all
 nine MCP tools, and the full application suite passed 1,439 tests with 26
-Windows-only skips. Original-corpus validation and the new backend's native
-Windows/macOS and OpenCV source-build results are tracked in the
+Windows-only skips. On Linux, the Shapely-free candidate matched the previous
+version on all 280 original image cases and 49 original PDF cases. Native
+platform results are tracked in the
 [validation notes](docs/lightweight-branch.md#native-and-source-validation).
 Application code uses Apache-2.0; bundled models and dependencies retain their
 own terms. See [LICENSE](LICENSE) and [LICENSING.md](LICENSING.md).
@@ -44,7 +45,7 @@ has been removed.
 
 Use **Python 3.12**. Earlier native validation covered Linux x86-64, Windows x64
 and macOS arm64. Those results predate the OpenCV DNN OCR backend and do not
-establish acceptance of `0.10.0.dev2`. See the
+establish acceptance of `0.10.0.dev3`. See the
 [validation results](docs/lightweight-branch.md#native-and-source-validation)
 for historical coverage and the new backend's pending checks.
 
@@ -55,11 +56,12 @@ build. Consult the workflow's individual job results; a wheel build alone does
 not establish native runtime or source-build compatibility.
 
 From the repository root, enter `apps/mcp`. First build the required RapidOCR
-companion wheel, `rapidocr==3.10.0+bv.2`. It makes Pillow and HTTP helpers optional
+companion wheel, `rapidocr==3.10.0+bv.3`. It makes Pillow and HTTP helpers optional
 and allows this application to supply an inference-session factory per OCR
-instance. Model bytes and OCR pre/postprocessing are unchanged. Without a
-factory, the companion retains upstream inference-session behavior. The builder
-checks the upstream wheel's SHA-256.
+instance. Model bytes and OCR preprocessing are unchanged. The OCR box-expansion
+calculation uses local scalar geometry instead of Shapely. Without a factory,
+the companion retains upstream inference-session behavior. The builder checks
+the upstream wheel's SHA-256.
 
 Linux/macOS shell:
 
@@ -189,12 +191,12 @@ On Windows use the installed Python path printed by the installer, followed by
 | `mcp==2.3.0` | MCP protocol |
 | `zxing-cpp==3.1.1` | QR and barcode decoding |
 | `pyoxipng==9.1.1` | Lossless PNG optimization |
-| `rapidocr==3.10.0+bv.2` | OCR preprocessing, detection/recognition orchestration and postprocessing |
+| `rapidocr==3.10.0+bv.3` | OCR preprocessing, detection/recognition orchestration and postprocessing |
 | `pypdfium2==5.14.0` | PDF reading/rendering for PDF redaction |
 
 The default installer selects `all`. These are direct dependencies; they also
 install their own dependencies. Default runtime does not require Pillow,
-ReportLab, requests, charset-normalizer, the Python `onnxruntime` package or a
+ReportLab, requests, charset-normalizer, Shapely, the Python `onnxruntime` package or a
 separate Python `onnx` parser. OpenCV DNN loads the bundled ONNX models directly.
 The supported OCR configuration is CPU-only PP-OCRv6 small detection and
 recognition, using the unchanged RapidOCR model bytes. The recognition dictionary
@@ -223,10 +225,10 @@ environment:
 
 ```bash
 python3.12 -m venv .venv-dev
-.venv-dev/bin/python -m pip install -c install-constraints.txt '.[all,test,png-test,scanner-test,barcode-test,qr-test,face-test]' wheels/rapidocr-3.10.0+bv.2-py3-none-any.whl
+.venv-dev/bin/python -m pip install -c install-constraints.txt '.[all,test,png-test,scanner-test,barcode-test,qr-test,face-test]' wheels/rapidocr-3.10.0+bv.3-py3-none-any.whl
 .venv-dev/bin/python -m pytest tests
 .venv-dev/bin/python -m build --wheel
-.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev2-py3-none-any.whl --source-commit "$(git rev-parse HEAD)" --unpublished
+.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev3-py3-none-any.whl --source-commit "$(git rev-parse HEAD)" --unpublished
 ```
 
 On Windows use `.venv-dev\Scripts\python.exe` and obtain the SHA with
@@ -235,7 +237,7 @@ they are not default runtime requirements. `--unpublished` identifies a local
 working-tree build. A release must use a reviewed commit and its exact artifacts.
 
 Known limits include missed small faces and difficult email/code images.
-The full Linux suite passed on explicitly selected CPU cores after a pure
+The preceding version’s full Linux suite passed on explicitly selected CPU cores after a pure
 Python QR-generator probe reproduced host instability on another core.
 This does not establish unrestricted host stability or replace native testing
 on other systems. Six original Kaggle barcode/QR images remain unavailable.

@@ -191,3 +191,31 @@
 @@ -40 +40 @@
 -        self.session = get_engine(cfg.engine_type)(cfg)
 +        self.session = session if session is not None else get_engine(cfg.engine_type)(cfg)
+--- a/rapidocr/ch_ppocr_det/utils.py
++++ b/rapidocr/ch_ppocr_det/utils.py
+@@ -4,0 +5 @@
++import math
+@@ -10 +10,0 @@
+-from shapely.geometry import Polygon
+@@ -263,3 +263,18 @@
+-        unclip_ratio = self.unclip_ratio
+-        poly = Polygon(box)
+-        distance = poly.area * unclip_ratio / poly.length
++        vertices = [(float(x), float(y)) for x, y in box]
++        if 0 < len(vertices) < 3:
++            raise ValueError("A linearring requires at least 4 coordinates.")
++        if vertices and vertices[-1] != vertices[0]:
++            vertices.append(vertices[0])
++
++        twice_area = 0.0
++        if vertices:
++            origin_x = vertices[0][0]
++            for before, vertex, after in zip(vertices, vertices[1:], vertices[2:]):
++                twice_area += (vertex[0] - origin_x) * (before[1] - after[1])
++        area = abs(twice_area / 2.0)
++        perimeter = 0.0
++        for start, stop in zip(vertices, vertices[1:]):
++            dx, dy = stop[0] - start[0], stop[1] - start[1]
++            perimeter += math.sqrt(dx * dx + dy * dy)
++        distance = area * self.unclip_ratio / perimeter
++

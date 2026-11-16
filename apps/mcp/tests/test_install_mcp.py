@@ -254,10 +254,10 @@ def test_zip_accepts_native_wheel_metadata_line_endings(tmp_path, monkeypatch, n
     with zipfile.ZipFile(wheel, "w") as archive:
         archive.writestr("opencv_bv_tools-1.0.dist-info/METADATA", newline.join([
             "Metadata-Version: 2.4", "Name: opencv-bv-tools", "Version: 1.0",
-            "Requires-Dist: rapidocr==3.10.0+bv.2", "", ""]))
+            "Requires-Dist: rapidocr==3.10.0+bv.3", "", ""]))
     with zipfile.ZipFile(companion, "w") as archive:
-        archive.writestr("rapidocr-3.10.0+bv.2.dist-info/METADATA", newline.join([
-            "Metadata-Version: 2.4", "Name: rapidocr", "Version: 3.10.0+bv.2", "", ""]))
+        archive.writestr("rapidocr-3.10.0+bv.3.dist-info/METADATA", newline.join([
+            "Metadata-Version: 2.4", "Name: rapidocr", "Version: 3.10.0+bv.3", "", ""]))
     output = tmp_path / "bundle.zip"
     builder.build(tmp_path, wheel, output, "a" * 40, unpublished=unpublished, rapidocr_wheel=companion)
     with zipfile.ZipFile(output) as archive:
@@ -292,8 +292,8 @@ def test_bundle_source_links_use_the_claimed_commit():
 
 
 @pytest.mark.parametrize("app_version,companion_version", [
-    ("3.10.0+bv.1", "3.10.0+bv.1"),
-    ("3.10.0+bv.2", "3.10.0+bv.1"),
+    ("3.10.0+bv.2", "3.10.0+bv.2"),
+    ("3.10.0+bv.3", "3.10.0+bv.2"),
 ])
 def test_zip_rejects_stale_ocr_wheel(tmp_path, monkeypatch, app_version, companion_version):
     spec = importlib.util.spec_from_file_location("build_mcp_zip", REPO / "scripts/build_mcp_zip.py")
@@ -343,7 +343,7 @@ def test_built_wheels_include_independent_model_notices():
     from email.parser import BytesParser
     version = tomllib.loads((REPO / "pyproject.toml").read_text())["project"]["version"]
     app = REPO / f"dist/opencv_bv_tools-{version}-py3-none-any.whl"
-    companion = REPO / "wheels/rapidocr-3.10.0+bv.2-py3-none-any.whl"
+    companion = REPO / "wheels/rapidocr-3.10.0+bv.3-py3-none-any.whl"
     if not app.exists() or not companion.exists():
         pytest.skip("build both wheels first to check distribution notices")
     model_notice = (REPO / "docs/licenses/RAPIDOCR-MODEL-NOTICES.txt").read_bytes()
@@ -363,8 +363,13 @@ def test_built_wheels_include_independent_model_notices():
                 assert archive.read("opencv_bv_tools/models/YUNET-LICENSE") == (
                     REPO / "docs/licenses/YUNET-LICENSE.txt").read_bytes()
             else:
+                import re
+                requirements = metadata.get_all("Requires-Dist", [])
+                assert not any(re.split(r"[ ;(<>=!~\[]", requirement, 1)[0].lower() in
+                               {"shapely", "onnxruntime", "onnxruntime-gpu"}
+                               for requirement in requirements)
                 for name in ("main.py", "utils/load_image.py", "utils/vis_res.py",
-                             "utils/download_file.py", "ch_ppocr_det/main.py",
+                             "utils/download_file.py", "ch_ppocr_det/main.py", "ch_ppocr_det/utils.py",
                              "ch_ppocr_rec/main.py", "ch_ppocr_cls/main.py"):
                     source = archive.read("rapidocr/" + name)
                     assert b"# Modified for OpenCV BV tools from RapidOCR 3.10.0." in source[:500]
@@ -599,7 +604,7 @@ def test_companion_wheel_integrity_and_path_boundary(tmp_path):
 
 
 def test_source_checkout_needs_companion_before_install(tmp_path):
-    (tmp_path / "pyproject.toml").write_text('ocr = ["rapidocr==3.10.0+bv.2"]')
+    (tmp_path / "pyproject.toml").write_text('ocr = ["rapidocr==3.10.0+bv.3"]')
     stale = tmp_path / "wheels/rapidocr-3.10.0+bv.1-py3-none-any.whl"
     stale.parent.mkdir()
     stale.write_bytes(b"old companion must not be selected")
@@ -613,10 +618,15 @@ def test_package_validation_labels_unpublished_working_tree(tmp_path, monkeypatc
     validator = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(validator)
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
-    monkeypatch.setattr(validator.subprocess, "check_output", lambda command, **kwargs:
-                        " M apps/mcp/pyproject.toml\n" if command[1] == "status"
-                        else "" if command[1] == "ls-files"
-                        else "a" * 40 + "\n" if command[1] == "rev-parse" else "1234567890\n")
+    real_check_output = subprocess.check_output
+    def check_output(command, **kwargs):
+        if command[0] != "git":
+            return real_check_output(command, **kwargs)
+        return (" M apps/mcp/pyproject.toml\n" if command[1] == "status"
+                else "" if command[1] == "ls-files"
+                else "a" * 40 + "\n" if command[1] == "rev-parse" else "1234567890\n")
+    monkeypatch.setattr(validator.subprocess, "check_output", check_output)
+    assert subprocess.check_output([sys.executable, "-c", "import sys; sys.stdout.buffer.write(b'bytes')"]) == b"bytes"
     calls = []
     def stop_before_build(command, **kwargs):
         calls.append(command)
@@ -688,23 +698,24 @@ def test_package_validation_checks_real_git_inputs_before_build(tmp_path, monkey
         assert report["untracked_files"] == (["src/example/new_module.py"] if state == "unpublished" else [])
 
 
-@pytest.mark.parametrize("distribution,module_present", [
-    (None, False), ("onnxruntime", False), ("onnxruntime-gpu", False), (None, True),
+@pytest.mark.parametrize("distribution,module", [
+    (None, None), ("onnxruntime", None), ("onnxruntime-gpu", None), (None, "onnxruntime"),
+    ("Shapely", None), (None, "shapely"),
 ])
-def test_platform_probe_requires_onnxruntime_physically_absent(distribution, module_present):
+def test_platform_probe_requires_removed_dependencies_physically_absent(distribution, module):
     spec = importlib.util.spec_from_file_location("check_platform", REPO / "dev/check_platform.py")
     probe = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(probe)
     code = f'''
 import importlib.metadata, importlib.util, sys, types
-optional = {{"Pillow", "reportlab", "requests", "charset-normalizer", "segno", "onnxruntime", "onnxruntime-gpu"}}
+optional = {{"Pillow", "reportlab", "requests", "charset-normalizer", "segno", "onnxruntime", "onnxruntime-gpu", "Shapely"}}
 def version(name):
     if name in optional and name != {distribution!r}:
         raise importlib.metadata.PackageNotFoundError(name)
     return "1.0"
 importlib.metadata.version = version
 original_find_spec = importlib.util.find_spec
-importlib.util.find_spec = lambda name: ({module_present!r} or None) if name == "onnxruntime" else original_find_spec(name)
+importlib.util.find_spec = lambda name: (True if name == {module!r} else None) if name in ("onnxruntime", "shapely") else original_find_spec(name)
 server = types.ModuleType("opencv_bv_tools.server")
 class Server:
     async def list_tools(self):
@@ -717,7 +728,9 @@ exec({probe.PROBE!r})
 '''
     result = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True, timeout=10, check=True)
     report = json.loads(result.stdout)
-    absent = distribution is None and not module_present
-    assert report["onnxruntime_absent"] is absent
+    onnx_absent = distribution not in ("onnxruntime", "onnxruntime-gpu") and module != "onnxruntime"
+    shapely_absent = distribution != "Shapely" and module != "shapely"
+    assert report["onnxruntime_absent"] is onnx_absent
+    assert report["shapely_absent"] is shapely_absent
     assert report["missing_runtime_dependencies"] == []
-    assert report["status"] == ("registration_only_passed" if absent else "blocked")
+    assert report["status"] == ("registration_only_passed" if onnx_absent and shapely_absent else "blocked")

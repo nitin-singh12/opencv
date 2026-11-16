@@ -31,10 +31,9 @@ pyoxipng==9.1.1
 pypdfium2==5.14.0
 python-multipart==0.0.32
 PyYAML==6.0.3
-rapidocr==3.10.0+bv.2
+rapidocr==3.10.0+bv.3
 referencing==0.37.0
 rpds-py==0.30.0
-shapely==2.1.2
 six==1.17.0
 sse-starlette==3.5.1
 starlette==1.7.0

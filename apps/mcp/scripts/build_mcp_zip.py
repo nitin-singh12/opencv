@@ -88,18 +88,18 @@ def build(root, wheel, output, source_commit, unpublished=False, rapidocr_wheel=
     dependencies=[]
     ocr_requirements = [requirement for requirement in metadata.get_all("Requires-Dist", [])
                         if re.split(r"[ ;(<>=!~\[]", requirement, 1)[0].lower() == "rapidocr"]
-    if any(not re.fullmatch(r"rapidocr\s*==\s*3\.10\.0\+bv\.2\s*(?:;.*)?", requirement, re.IGNORECASE)
+    if any(not re.fullmatch(r"rapidocr\s*==\s*3\.10\.0\+bv\.3\s*(?:;.*)?", requirement, re.IGNORECASE)
            for requirement in ocr_requirements):
-        raise ValueError("Package wheel must require RapidOCR 3.10.0+bv.2")
+        raise ValueError("Package wheel must require RapidOCR 3.10.0+bv.3")
     if ocr_requirements:
-        companion = rapidocr_wheel or root / "wheels/rapidocr-3.10.0+bv.2-py3-none-any.whl"
+        companion = rapidocr_wheel or root / "wheels/rapidocr-3.10.0+bv.3-py3-none-any.whl"
         with zipfile.ZipFile(companion) as archive:
             companion_metadata = [name for name in archive.namelist() if name.endswith(".dist-info/METADATA")]
             if len(companion_metadata) != 1:
                 raise ValueError("Expected one RapidOCR companion metadata file")
             companion_meta = BytesParser().parsebytes(
                 archive.read(companion_metadata[0]), headersonly=True)
-            if companion_meta["Name"] != "rapidocr" or companion_meta["Version"] != "3.10.0+bv.2":
+            if companion_meta["Name"] != "rapidocr" or companion_meta["Version"] != "3.10.0+bv.3":
                 raise ValueError("Wrong RapidOCR companion wheel")
         dependency_path = "wheels/" + companion.name
         entries[dependency_path] = companion.read_bytes()

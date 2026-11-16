@@ -1,8 +1,10 @@
 """Backend integrity, lazy isolation and real shape-changing OpenCV inference."""
+import builtins
 import hashlib
 import importlib.util
 import json
 from pathlib import Path
+from types import SimpleNamespace
 import subprocess
 import sys
 
@@ -133,7 +135,7 @@ def test_ocr_and_pdf_imports_without_runtime_or_network():
 import importlib.abc,json,socket,sys
 class Deny(importlib.abc.MetaPathFinder):
     def find_spec(self, name, path=None, target=None):
-        if name.split('.')[0] in {'onnxruntime', 'onnx'}:
+        if name.split('.')[0] in {'onnxruntime', 'onnx', 'shapely'}:
             raise AssertionError('Forbidden inference dependency: ' + name)
 sys.meta_path.insert(0,Deny())
 def offline(*args, **kwargs):
@@ -150,7 +152,7 @@ with open(sys.argv[1],'rb') as stream:
 result=app.detect(rgb,ocr)
 assert len(result.boxes)>=2
 assert ocr.engine.text_cls is None
-assert not any(k.split('.')[0] in {'onnxruntime','onnx'} for k in sys.modules)
+assert not any(k.split('.')[0] in {'onnxruntime','onnx','shapely'} for k in sys.modules)
 print(json.dumps({'boxes':len(result.boxes),'backend':ocr.providers()}))
 '''
     process = subprocess.run([sys.executable, "-c", script, str(fixture)], capture_output=True,
@@ -158,3 +160,47 @@ print(json.dumps({'boxes':len(result.boxes),'backend':ocr.providers()}))
     assert process.returncode == 0, process.stderr
     result = json.loads(process.stdout)
     assert result["backend"] == {"text_det": ["OpenCV DNN CPU"], "text_rec": ["OpenCV DNN CPU"]}
+
+
+_GOLDEN_UNCLIP = json.loads((Path(__file__).parent / 'fixtures/ocr/unclip-golden.json').read_text())['cases']
+
+
+@pytest.mark.parametrize('case', _GOLDEN_UNCLIP, ids=lambda case: case['id'])
+def test_unclip_matches_frozen_pre_removal_geometry(monkeypatch, case):
+    import rapidocr.ch_ppocr_det.utils as detector
+
+    original = detector.pyclipper
+    distances = []
+
+    class RecordingOffset:
+        def __init__(self):
+            self.inner = original.PyclipperOffset()
+
+        def AddPath(self, *args):
+            return self.inner.AddPath(*args)
+
+        def Execute(self, distance):
+            distances.append(float(distance).hex())
+            return self.inner.Execute(distance)
+
+    monkeypatch.setattr(detector, 'pyclipper', SimpleNamespace(
+        PyclipperOffset=RecordingOffset,
+        JT_ROUND=original.JT_ROUND,
+        ET_CLOSEDPOLYGON=original.ET_CLOSEDPOLYGON,
+    ))
+    operation = detector.DBPostProcess(unclip_ratio=case['unclip_ratio'])
+    points = np.array(case['points'], dtype=case['dtype']).reshape(case['shape'])
+    if 'exception' in case:
+        with pytest.raises(getattr(builtins, case['exception']['type'])):
+            operation.unclip(points)
+        assert distances == []
+        return
+
+    actual = operation.unclip(points)
+    expected = case['expanded']
+    assert distances == [case['distance_hex']]
+    assert actual.dtype == np.dtype(expected['dtype'])
+    np.testing.assert_array_equal(
+        actual,
+        np.array(expected['values'], dtype=expected['dtype']).reshape(expected['shape']),
+    )

@@ -297,7 +297,11 @@ def test_stops_pdf_helpers_even_if_leader_exited_or_ignores_term(tmp_path, phase
         pid = int(pidfile.read_text())
         deadline = time.monotonic()+3
         def stopped():
-            return not psutil.pid_exists(pid) or psutil.Process(pid).status() == psutil.STATUS_ZOMBIE
+            try:
+                return not psutil.pid_exists(pid) or psutil.Process(pid).status() == psutil.STATUS_ZOMBIE
+            except psutil.NoSuchProcess:
+                # The helper can exit between checking its PID and reading its status.
+                return True
         while not stopped() and time.monotonic() < deadline: time.sleep(0.02)
         assert stopped(), "orphan PDF helper is still running"
         assert worker.pid is None

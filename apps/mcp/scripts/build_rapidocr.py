@@ -20,7 +20,7 @@ import re
 import zipfile
 
 UPSTREAM_SHA256 = "2fc34e26cd0f48514804a94f8832283039c7334076bff60768b1fed9ad068050"
-VERSION = "3.10.0+bv.2"
+VERSION = "3.10.0+bv.3"
 CHANGE_NOTICE = (
     b"# Modified for OpenCV BV tools from RapidOCR 3.10.0.\n"
     b"# See BV-MODIFICATIONS.txt in the rapidocr distribution metadata for changes.\n"
@@ -31,6 +31,7 @@ PATCHED = {
     "rapidocr/utils/download_file.py",
     "rapidocr/main.py",
     "rapidocr/ch_ppocr_det/main.py",
+    "rapidocr/ch_ppocr_det/utils.py",
     "rapidocr/ch_ppocr_rec/main.py",
     "rapidocr/ch_ppocr_cls/main.py",
 }
@@ -103,6 +104,8 @@ def build(upstream, output):
     del metadata["Requires-Dist"]
     for requirement in requirements:
         name = re.split(r"[ ;(<>=!~\[]", requirement, 1)[0].lower()
+        if name == "shapely":
+            continue
         if name in {"pillow", "requests"}:
             requirement += (
                 '; extra == "' + ("images" if name == "pillow" else "downloads") + '"'
@@ -120,7 +123,8 @@ def build(upstream, output):
         f"RapidOCR {VERSION}: local OpenCV BV array-input build.\n"
         f"Upstream wheel SHA256: {UPSTREAM_SHA256}\n"
         "Modified utils/load_image.py, utils/vis_res.py and utils/download_file.py.\n"
-        "Pillow and requests are optional; array OCR, algorithms and model bytes are unchanged.\n"
+        "Pillow and requests are optional; model bytes are unchanged.\n"
+        "Modified ch_ppocr_det/utils.py to calculate polygon area and perimeter without Shapely.\n"
         "Modified main.py and ch_ppocr_{det,rec,cls}/main.py to accept per-instance inference sessions.\n"
         "The MCP application supplies OpenCV DNN sessions; default upstream engine behavior remains available.\n"
         "Install images for file/encoded-image/text-visualization helpers and downloads for HTTP helpers.\n"

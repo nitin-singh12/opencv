@@ -7,11 +7,24 @@ optimization and PDFium for current PDF rendering/redaction. Replacing a PDF
 renderer is a separate compatibility task, not a dependency-free OpenCV call.
 
 Follow the [README](../README.md) to build the required RapidOCR companion wheel,
-install the package and test all nine tools. Version `0.10.0.dev2` uses companion
-`rapidocr==3.10.0+bv.2`. It preserves upstream model bytes and OCR
-pre/postprocessing, makes Pillow and requests helpers optional, and accepts an
+install the package and test all nine tools. Version `0.10.0.dev3` uses companion
+`rapidocr==3.10.0+bv.3`. It preserves upstream model bytes and OCR preprocessing,
+replaces Shapely in detector box expansion with scalar geometry, makes Pillow
+and requests helpers optional, and accepts an
 inference-session factory on each OCR instance. Without a factory, the companion
 retains upstream inference-session behavior.
+
+For the Shapely-free candidate, a fresh Linux installation passed all nine
+tools with Shapely and ONNX Runtime absent. The full application suite passed
+1,460 tests and 51 subtests, with 26 Windows-only skips. All 280 original image
+cases matched the previous version's boxes, readings and decoded output pixels.
+All 49 original PDFs (91 pages) matched its input hashes, boxes, address values,
+scoring, structure and rendered pixels. A separate nine-image/four-PDF sample
+also matched after switching the model loader to a verified byte buffer. Native
+Windows/macOS checks are separate; these Linux results do not establish
+acceptance on those platforms. An unpinned PDF comparator crashed on this host;
+the comparison passed on previously tested CPU cores, without repeating the
+completed corpus processing.
 
 ## OpenCV DNN OCR backend
 
@@ -52,7 +65,7 @@ uv pip install --python .venv/bin/python -c install-constraints.txt '.[cmyk]'
 For an extracted ZIP use its application wheel instead:
 
 ```bash
-uv pip install --python .venv/bin/python -c install-constraints.txt 'wheels/opencv_bv_tools-0.10.0.dev2-py3-none-any.whl[cmyk]'
+uv pip install --python .venv/bin/python -c install-constraints.txt 'wheels/opencv_bv_tools-0.10.0.dev3-py3-none-any.whl[cmyk]'
 ```
 
 If the environment has pip, `python -m pip install` can be used instead of
@@ -88,7 +101,7 @@ defects. Earlier failed-run evidence is retained rather than removed.
 
 ## Native and source validation
 
-### OpenCV DNN backend: current validation
+### OpenCV DNN backend: validation before Shapely removal
 
 Measured on 12 November 2026 using a local unpublished `0.10.0.dev2` candidate,
 based on `b8b9b7f984b754ba72d28138eb13b001390854e7`. The candidate used Linux

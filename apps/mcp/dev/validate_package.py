@@ -152,8 +152,9 @@ def validate(work, prepare_only=False, unpublished=False):
         platform_report = json.loads((work / "platform/platform-report.json").read_text())
         report["default_install"] = platform_report["target"]
         assert all(report["default_install"]["packages"][name] is None
-                   for name in ("Pillow", "reportlab", "requests", "charset-normalizer", "onnxruntime", "onnxruntime-gpu"))
+                   for name in ("Pillow", "reportlab", "requests", "charset-normalizer", "onnxruntime", "onnxruntime-gpu", "Shapely"))
         assert report["default_install"]["onnxruntime_absent"], "ONNX Runtime must not be installed or importable"
+        assert report["default_install"]["shapely_absent"], "Shapely must not be installed or importable"
         print("DEFAULT INSTALL " + json.dumps(report["default_install"], sort_keys=True), flush=True)
         run([installed, "-m", "ensurepip", "--upgrade"], cwd=work)
         if not prepare_only:
@@ -163,7 +164,9 @@ def validate(work, prepare_only=False, unpublished=False):
             run([installed, extracted / "dev/check_platform.py", "--output", work / "platform-with-tests"], cwd=work)
             test_platform = json.loads((work / "platform-with-tests/platform-report.json").read_text())
             assert test_platform["target"]["onnxruntime_absent"], "Test dependencies must not install ONNX Runtime"
+            assert test_platform["target"]["shapely_absent"], "Test dependencies must not install Shapely"
             report["test_install_onnxruntime_absent"] = True
+            report["test_install_shapely_absent"] = True
             shutil.copytree(ROOT / "tests", extracted / "tests", dirs_exist_ok=True)
             shutil.copyfile(ROOT / "scripts/build_mcp_zip.py", extracted / "scripts/build_mcp_zip.py")
             shutil.copyfile(ROOT / "dev/validate_package.py", extracted / "dev/validate_package.py")
@@ -172,6 +175,7 @@ def validate(work, prepare_only=False, unpublished=False):
             shutil.copyfile(wheel, extracted / "dist" / wheel.name)
             run([installed, "-m", "pytest", "-q", "-ra", "tests/test_install_mcp.py",
                  "tests/test_native_runtime.py", "tests/test_ocr_process.py", "tests/test_ocr_opencv.py",
+                 "tests/test_ocr_model_loading.py",
                  "tests/test_unified_protocol.py",
                  "tests/test_face_blurring.py", "--junitxml", work / "tests.xml"], cwd=extracted, timeout=900)
             report["native_contracts"] = "passed; consult pytest log for platform-specific skips"

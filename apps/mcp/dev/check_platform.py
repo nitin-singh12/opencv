@@ -31,7 +31,7 @@ import tempfile
 
 packages = ["opencv-bv-tools", "Pillow", "mcp", "zxing-cpp", "pyoxipng",
             "reportlab", "requests", "charset-normalizer", "opencv-python-headless", "numpy",
-            "rapidocr", "onnxruntime", "onnxruntime-gpu", "pypdfium2", "segno"]
+            "rapidocr", "onnxruntime", "onnxruntime-gpu", "Shapely", "pypdfium2", "segno"]
 versions = {}
 for name in packages:
     try:
@@ -61,15 +61,16 @@ try:
         names = sorted(tool.name for tool in asyncio.run(server.list_tools()))
     expected = {"convert_image_format", "read_qr", "read_barcodes", "compress_png",
                 "blur_faces", "scan_document", "find_emails", "redact_emails", "redact_pdf"}
-    heavy = sorted(set(sys.modules) & {"cv2", "numpy", "rapidocr", "onnxruntime", "pypdfium2", "pymupdf"})
+    heavy = sorted(set(sys.modules) & {"cv2", "numpy", "rapidocr", "onnxruntime", "shapely", "pypdfium2", "pymupdf"})
     result.update(tools=names, heavy_imports=heavy)
-    optional = {"Pillow", "reportlab", "requests", "charset-normalizer", "segno", "onnxruntime", "onnxruntime-gpu"}
+    optional = {"Pillow", "reportlab", "requests", "charset-normalizer", "segno", "onnxruntime", "onnxruntime-gpu", "Shapely"}
     missing = [name for name, version in versions.items() if version is None and name not in optional]
     result["missing_runtime_dependencies"] = missing
     result["onnxruntime_absent"] = (versions["onnxruntime"] is None and versions["onnxruntime-gpu"] is None
                                     and importlib.util.find_spec("onnxruntime") is None)
+    result["shapely_absent"] = (versions["Shapely"] is None and importlib.util.find_spec("shapely") is None)
     result["status"] = ("registration_only_passed" if set(names) == expected and not heavy and not missing
-                        and result["onnxruntime_absent"] else "blocked")
+                        and result["onnxruntime_absent"] and result["shapely_absent"] else "blocked")
 except Exception as error:
     result.update(status="blocked", startup_error={"type": type(error).__name__, "message": str(error)})
 print(json.dumps(result, ensure_ascii=True, allow_nan=False))
