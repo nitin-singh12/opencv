@@ -149,11 +149,15 @@ if sys.argv[1] == 'True':
         assert process.returncode == 0
         if child_pid:
             deadline = time.monotonic() + 3
-            while psutil.pid_exists(child_pid) and time.monotonic() < deadline:
-                if psutil.Process(child_pid).status() == psutil.STATUS_ZOMBIE:
-                    break
+            def stopped():
+                try:
+                    return psutil.Process(child_pid).status() == psutil.STATUS_ZOMBIE
+                except psutil.NoSuchProcess:
+                    return True
+
+            while not stopped() and time.monotonic() < deadline:
                 time.sleep(0.02)
-            assert not psutil.pid_exists(child_pid) or psutil.Process(child_pid).status() == psutil.STATUS_ZOMBIE
+            assert stopped(), "Helper process remained alive after cleanup"
     finally:
         process.stdout.close()
         if child_pid:
