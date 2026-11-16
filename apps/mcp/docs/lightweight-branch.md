@@ -7,8 +7,36 @@ optimization and PDFium for current PDF rendering/redaction. Replacing a PDF
 renderer is a separate compatibility task, not a dependency-free OpenCV call.
 
 Follow the [README](../README.md) to build the required RapidOCR companion wheel,
-install the package and test all nine tools. The companion preserves upstream
-model bytes and array OCR code; it makes Pillow and requests helpers optional.
+install the package and test all nine tools. Version `0.10.0.dev2` uses companion
+`rapidocr==3.10.0+bv.2`. It preserves upstream model bytes and OCR
+pre/postprocessing, makes Pillow and requests helpers optional, and accepts an
+inference-session factory on each OCR instance. Without a factory, the companion
+retains upstream inference-session behavior.
+
+## OpenCV DNN OCR backend
+
+The application supplies OpenCV DNN sessions for CPU inference with the bundled
+PP-OCRv6 small detector and recognizer. It does not install or import the Python
+`onnxruntime` package or require a separate Python `onnx` parser. OpenCV loads the
+ONNX model files directly. The recognition dictionary in
+`models/ppocrv6-characters.txt` comes from the exact bundled recognizer's metadata;
+its source model and hash are recorded in
+[OCR provenance](../src/opencv_bv_tools/models/ocr-provenance.json). Model downloads,
+arbitrary replacement models and CUDA OCR are outside this supported configuration.
+
+The existing lazy persistent worker is retained: registration does not load OCR,
+the first OCR call initializes it, later calls reuse it, and the configured idle
+timeout releases it. Moving inference into OpenCV does not establish a memory or
+speed improvement by itself.
+
+A preliminary experiment was followed by a production-path comparison using an
+installed `0.10.0.dev2` candidate with companion `3.10.0+bv.2`. Across nine fixed
+inputs, 20 executions and 983 inferences, the compared redaction results, output
+pixels, OCR text/boxes/columns and preprocessing tensors matched exactly. OCR
+confidence values were not identical: their maximum absolute difference was
+`0.00022`. This is finite backend-parity evidence, not a labelled accuracy
+benchmark or acceptance on other platforms. The fresh-package and full Linux
+suite checks subsequently passed; original-corpus coverage is recorded below.
 
 ## CMYK JPEG compatibility
 
@@ -24,14 +52,17 @@ uv pip install --python .venv/bin/python -c install-constraints.txt '.[cmyk]'
 For an extracted ZIP use its application wheel instead:
 
 ```bash
-uv pip install --python .venv/bin/python -c install-constraints.txt 'wheels/opencv_bv_tools-0.10.0.dev1-py3-none-any.whl[cmyk]'
+uv pip install --python .venv/bin/python -c install-constraints.txt 'wheels/opencv_bv_tools-0.10.0.dev2-py3-none-any.whl[cmyk]'
 ```
 
 If the environment has pip, `python -m pip install` can be used instead of
 `uv pip install --python ...`. On Windows use the installed Python path printed
 by the installer. This explicitly installs Pillow for CMYK compatibility only.
 
-## Evidence and remaining work
+## Historical evidence and remaining work
+
+The results in this section predate the OpenCV DNN OCR backend. They describe
+earlier application revisions and are not acceptance results for `0.10.0.dev2`.
 
 Prior source-branch measurements compared 20 OCR regression runs containing 983
 engine calls, with matching compared OCR results. A separate 22-case regression
@@ -51,9 +82,152 @@ with `free(): invalid pointer`; repeating the nine-tool smoke check in that same
 installed environment passed. The cause of the first crash remains unresolved.
 These results support local evaluation, not a stable-release claim.
 
-Native Windows/macOS tests must be rerun for this version. The application now
-uses Apache-2.0, with third-party terms retained separately. Investigate the
-known failures and verify exact release artifacts before a stable release.
+The application uses Apache-2.0, with third-party terms retained separately.
+The newer checks below distinguish reproduced environment failures from package
+defects. Earlier failed-run evidence is retained rather than removed.
+
+## Native and source validation
+
+### OpenCV DNN backend: current validation
+
+Measured on 12 November 2026 using a local unpublished `0.10.0.dev2` candidate,
+based on `b8b9b7f984b754ba72d28138eb13b001390854e7`. The candidate used Linux
+x86-64, Python 3.12, OpenCV wheel `5.0.0.93`, NumPy `2.2.6` and RapidOCR
+`3.10.0+bv.2`. The reference used ONNX Runtime `1.23.2` with companion
+`3.10.0+bv.1`. The candidate environment contained neither the Python
+`onnxruntime` nor `onnx` distribution. Both paths used CPU inference with two
+threads, OpenCL disabled, seed `20261112` and the same detector/recognizer bytes.
+
+| Check | Measured result / remaining work |
+| --- | --- |
+| Focused OCR/PDF tests | 49 passed: 14 OCR and 35 PDF tests, including actual redaction pixels, geometry and default-factory fallthrough |
+| Installed production image OCR parity | 20 executions on 9 fixed inputs; 983 inferences; all compared results, pixels, preprocessing tensors and OCR text/boxes/columns exact; maximum confidence difference `0.00022` |
+| Focused CLI tests | 40 passed after correcting a stale CLI test |
+| Full application suite | 1,439 passed, 26 Windows-only skips, 51 passing subtests; 174.95 seconds on CPU cores 24–25, after the PDF fix |
+| Clean ZIP nine-tool MCP smoke | Passed from an extracted path containing spaces and Unicode; default install contains neither ONNX Runtime nor Pillow/requests/charset-normalizer/ReportLab |
+| Original MCP integration regression | 22 cases passed across all nine tools; email boxes and pixels, PDF/scanner pixels, QR/barcode results and image alpha matched the recorded baseline |
+| Installer portability | 66 Linux cases passed after narrowing the POSIX-only skip; 23 cases are now Windows-eligible, subject to native CI |
+| OpenCV source build with this backend | Passed locally on Linux: C++ compile/link and PNG roundtrip, plus all nine MCP tools using the source-built Python binding. OpenCV's own unit suite was not run |
+| Windows x64 / macOS arm64 with this backend | Pending; historical results below do not cover this change |
+
+Raw production comparison evidence is retained locally under
+`mcp-branch-review/evidence/ocr-opencv-production-20261112/`, including
+`pipeline-comparison-expanded.log` and `pipeline-opencv-expanded.json`. The JSON
+records input/model hashes, configuration, candidate/reference versions and
+runtime. `metadata_json_sha256` and `packaged_dictionary_sha256` identify the
+captured model metadata and packaged dictionary separately. The latter matches
+[OCR provenance](../src/opencv_bv_tools/models/ocr-provenance.json).
+
+The protocol initialization stall was reproduced as a sandbox restriction on
+local socket-pair writes. Both unchanged protocol tests passed outside that
+sandbox. A separate, pure Python Segno QR probe reproduced crashes without
+importing this application, OpenCV, NumPy or Pillow: CPU 8 failed three runs,
+while nine runs on five other selected cores passed. The broader checks above
+therefore use explicit CPU affinity. This isolates an execution-environment
+problem; it does not diagnose a hardware/firmware cause or establish unrestricted
+host stability. PDF cancellation/recovery passed in the complete suite without
+changing production cleanup. The earlier startup crash remains preserved as a
+historical observation, not a claimed production fix.
+
+The clean ZIP check initially exposed a zero-context insertion error in the
+companion-patch builder. The parser was fixed, patched Python files are compiled
+before packaging, and the corrected ZIP passed a new installation and all nine
+tool calls. A stale CLI test now patches the actual file-output helper. The
+macOS timeout test observes workers it launches, avoiding sandbox-restricted
+process enumeration while retaining process, pipe and thread leak assertions.
+
+Current full-suite, original-corpus, package-identity and failed-run evidence is
+retained under `mcp-branch-review/evidence/full-validation-20261112/` outside the
+repository. Runs use the installed candidate wheels, preserve input files and
+record hashes, splits, commands, CPU affinity and raw failures. No paid service
+was used. All 280 original email images produced the same boxes as the recorded
+historical baseline. One real image reported different OCR text against an older
+baseline; a matched comparison against the immediately preceding ONNX Runtime
+pipeline returned identical text, box and output pixels for both backends. Both
+missed the exact annotated spelling, so this is not a claim of perfect OCR.
+On the low-contrast set, 103 of 111 annotated addresses were fully hidden,
+8 were partially hidden and one false box was recorded; these results match
+the historical boxes. On the synthetic set, all 190 annotated addresses were
+fully covered, while three held-out images failed the original strict criterion
+because non-email pixels were also covered.
+
+The 49 annotated PDF cases ran across 91 pages. Before the sideways-text fix,
+893 of 894 annotated addresses were fully hidden; the missed vertical address
+was also missed by the preceding ONNX Runtime version. With the fix, all 894
+were fully hidden, no target coverage decreased and none of the 188 lookalikes
+was covered over half. On four pages, changed boxes also covered 516 additional
+non-target ink pixels. Total processing time across this corpus rose from
+2,195.6 to 4,242.7 seconds in these local runs; individual documents ran in
+parallel, so this sum is not wall-clock duration. The extra original-page OCR
+check can make skewed scanned PDFs considerably slower. The separate 43-page
+real-PDF set has no independent accuracy annotations and supports structural
+checks only. These finite tests do not guarantee all private information is
+detected; review redacted documents before sharing.
+
+| Original non-OCR corpus | Measured coverage |
+| --- | --- |
+| Face detection/blur | All 50 original images; 101/104 faces fully covered, no false positives on 5 negatives; the same 3 small-face misses remain |
+| Barcodes | All 100 original images; 79/88 instances decoded, no wrong payloads or false positives on 20 negatives |
+| QR codes | All 100 original images; 84/92 symbols decoded, no wrong payloads or false positives on 14 negatives |
+| Conversion | 12 original cases plus the EXIF case passed; alpha preserved |
+| PNG optimization | 34 available cases passed sample/alpha/metadata and repeated-optimization checks; 33 inputs match original file hashes, one level-zero screenshot was reconstructed with matching scene pixels |
+| Manual scanner pilot | 38 original cases passed, with exact embedded pixels and all 152 rendered markers preserved |
+| Original scanner experiments | 2,163 SmartDoc/Mendeley images plus 206 synthetic images, 4,738 calls: 3,580 pixel-exact PDFs, 1,157 expected input-pixel-limit rejections and 1 expected output-size-limit rejection |
+| Kaggle reader samples | 6/12 original images recovered with exact hashes and exercised through both readers; no independent payload ground truth, so this is execution coverage |
+
+Scanner experiments check the current manual rotation/PDF feature, not automatic
+corner detection or perspective correction. One original harness assertion
+incorrectly assumed that an image within the input-pixel limit must produce a
+PDF within the separate 32 MiB output limit. Eight targeted calls reproduced the
+correct rejection; independent encoding confirmed the compressed image alone
+exceeded that cap. The raw failed assertion is retained alongside the corrected
+acceptance report. Production limits and scanner code were not changed.
+
+Six original Kaggle images, and their derived PNG cases, could not be recovered
+from the searched local locations or archives. The recorded public download now
+returns HTTP 404. They are untested coverage gaps, not passes or new replacement
+samples. Detection totals above are finite corpus measurements and do not imply
+99% accuracy or complete redaction on arbitrary user images.
+
+### Historical validation before the backend change
+
+Measured on 12 November 2026 with Python 3.12. The recorded run is
+[43205908479](https://github.com/nitin-singh12/opencv/actions/runs/43205908479)
+at commit `b8b9b7f984b754ba72d28138eb13b001390854e7`.
+
+| Environment | Nine-tool MCP smoke | Targeted tests / build | Commit |
+| --- | --- | --- | --- |
+| Ubuntu 24.04, x86-64 | Passed | 251 passed, 26 skipped | `b8b9b7f` |
+| Windows Server 2022, x64 | Passed | 213 passed, 64 skipped | `b8b9b7f` |
+| macOS 15, arm64 | Passed in preceding run; retry was queued at recording | 192 passed, 81 skipped in preceding run | `944ce3f` |
+| Ubuntu 24.04, OpenCV source build | Passed | C++ libraries, Python binding and C++ PNG roundtrip passed | `b8b9b7f` |
+
+The preceding run is
+[43204093556](https://github.com/nitin-singh12/opencv/actions/runs/43204093556).
+The source job at `b8b9b7f` built OpenCV `5.2.0-dev` in about 21 minutes and
+verified ten process import records, including the actual face and OCR workers.
+Every recorded OpenCV import and loaded library belonged to that source install.
+The macOS attempt was cancelled before any test started because GitHub
+could not assign a runner; only that job was queued for retry at recording.
+That code commit added portable cancellation/file tests, enabled the POSIX
+installer tests on macOS, and preserved LF checkout line endings on Windows;
+it did not change
+image algorithms or model files.
+
+All nine tools were called through MCP during a fresh ZIP installation, before
+adding test-only packages. The additional tests covered installation, native file
+and process behavior, OCR worker lifetime, cancellation/recovery and face tools.
+This is a targeted suite, not every application test or an accuracy benchmark.
+Windows skips include POSIX executable fakes, signals, FIFO paths and the current
+existing-output restriction. Use a new output filename on Windows, with local
+NTFS paths shorter than 240 characters and no links or junctions.
+
+The historical Linux and Windows package payloads had 172 identical entries.
+The only remaining content difference was LF versus CRLF in generated wheel
+`METADATA`; model and application source bytes matched. Raw ZIP hashes were
+recorded separately and are
+not claimed to be identical across operating systems.
+
 The fork has a dedicated `MCP native and source validation` workflow. It uses
 only standard runners in the public repository, with no artifact or cache
 uploads. Raw results are printed to job logs and summarized per job. Linux,

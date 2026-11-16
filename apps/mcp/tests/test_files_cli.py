@@ -14,6 +14,7 @@ import pytest
 
 from opencv_bv_tools import ConversionError
 from opencv_bv_tools import image_conversion as cli
+from opencv_bv_tools.runtime import file_output
 
 
 @pytest.fixture
@@ -78,7 +79,7 @@ def test_overwrite_requires_boolean(source, overwrite):
 def test_write_failure_cleans_partial_temp(source, monkeypatch):
     target = source.with_suffix(".webp")
     target.write_bytes(b"existing")
-    real_temporary_file = cli.tempfile.NamedTemporaryFile
+    real_temporary_file = file_output.tempfile.NamedTemporaryFile
     class BrokenWriter:
         def __enter__(self):
             self.handle = real_temporary_file(dir=source.parent, prefix=".opencv-bv-", delete=False)
@@ -89,7 +90,7 @@ def test_write_failure_cleans_partial_temp(source, monkeypatch):
             raise OSError("injected short write")
         def __exit__(self, *args):
             self.handle.close()
-    monkeypatch.setattr(cli.tempfile, "NamedTemporaryFile", lambda **kwargs: BrokenWriter())
+    monkeypatch.setattr(file_output.tempfile, "NamedTemporaryFile", lambda **kwargs: BrokenWriter())
     with pytest.raises(OSError, match="short write"):
         cli.convert_file(source, target, overwrite=True)
     assert target.read_bytes() == b"existing"

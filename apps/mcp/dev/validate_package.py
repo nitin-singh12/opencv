@@ -61,11 +61,14 @@ def content_digest(archive):
     return hashlib.sha256(json.dumps(entries, sort_keys=True).encode()).hexdigest(), entries
 
 
-def verify_bundle(archive, commit):
+def verify_bundle(archive, commit, unpublished=False):
     with zipfile.ZipFile(archive) as bundle:
         prefix = "opencv-bv-server-mcp/"
         manifest = json.loads(bundle.read(prefix + "bundle.json"))
-        assert manifest["package_source_commit"] == commit
+        assert manifest["package_source_commit"] is None
+        assert manifest["claimed_source_commit"] == (None if unpublished else commit)
+        assert manifest["base_commit"] == (commit if unpublished else None)
+        assert manifest["source_state"] == ("local-unpublished" if unpublished else "source-claimed")
         assert len(bundle.namelist()) == len(set(bundle.namelist()))
         assert set(bundle.namelist()) == {prefix + name for name in manifest["files_sha256"]} | {prefix + "bundle.json"}
         for name, expected in manifest["files_sha256"].items():
@@ -75,14 +78,26 @@ def verify_bundle(archive, commit):
         return manifest
 
 
-def validate(work, prepare_only=False):
+def validate(work, prepare_only=False, unpublished=False):
     work.mkdir(parents=True, exist_ok=False)
     dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, text=True)
-    if dirty:
-        raise RuntimeError("Commit tracked changes before validating a versioned package")
+    # Setuptools and the ZIP builder read working-tree files, including new
+    # modules/assets. They must belong to the claimed commit in committed mode.
+    untracked = subprocess.check_output(
+        ["git", "ls-files", "--others", "--exclude-standard", "-z", "--", "."],
+        cwd=ROOT, text=True,
+    ).rstrip("\0").split("\0")
+    untracked = [name for name in untracked if name]
+    if (dirty or untracked) and not unpublished:
+        raise RuntimeError("Commit tracked changes and untracked package files before validating a versioned package, or use --unpublished")
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     epoch = subprocess.check_output(["git", "show", "-s", "--format=%ct", "HEAD"], cwd=ROOT, text=True).strip()
-    report = {"commit": commit, "os": platform.platform(), "architecture": platform.machine(),
+    report = {"commit": None if unpublished else commit,
+              "base_commit": commit if unpublished else None,
+              "source_state": "local-unpublished" if unpublished else "committed",
+              "tracked_changes": dirty.splitlines(),
+              "untracked_files": untracked,
+              "os": platform.platform(), "architecture": platform.machine(),
               "python": sys.version, "runner": os.environ.get("RUNNER_NAME"),
               "runner_image": os.environ.get("ImageOS"), "image_version": os.environ.get("ImageVersion"),
               "commands": COMMANDS, "status": "running"}
@@ -104,8 +119,8 @@ def validate(work, prepare_only=False):
         ocr_wheel, = companion.glob("*.whl")
         archive = dist / "opencv-bv-server-mcp.zip"
         run([builder, ROOT / "scripts/build_mcp_zip.py", "--wheel", wheel, "--rapidocr-wheel", ocr_wheel,
-             "--source-commit", commit, "--output", archive])
-        manifest = verify_bundle(archive, commit)
+             "--source-commit", commit, "--output", archive, *(["--unpublished"] if unpublished else [])])
+        manifest = verify_bundle(archive, commit, unpublished)
         digest, entries = content_digest(archive)
         report.update(zip_sha256=hashlib.sha256(archive.read_bytes()).hexdigest(), payload_sha256=digest,
                       wheel_sha256=manifest["wheel_sha256"], package_version=manifest["package_version"])
@@ -137,20 +152,27 @@ def validate(work, prepare_only=False):
         platform_report = json.loads((work / "platform/platform-report.json").read_text())
         report["default_install"] = platform_report["target"]
         assert all(report["default_install"]["packages"][name] is None
-                   for name in ("Pillow", "reportlab", "requests", "charset-normalizer"))
+                   for name in ("Pillow", "reportlab", "requests", "charset-normalizer", "onnxruntime", "onnxruntime-gpu"))
+        assert report["default_install"]["onnxruntime_absent"], "ONNX Runtime must not be installed or importable"
         print("DEFAULT INSTALL " + json.dumps(report["default_install"], sort_keys=True), flush=True)
         run([installed, "-m", "ensurepip", "--upgrade"], cwd=work)
         if not prepare_only:
             # Independent TEST oracles, absent during the preceding runtime checks.
             run([installed, "-m", "pip", "install", "pytest==9.0.2", "psutil==7.2.2",
                  "Pillow==12.3.0", "reportlab==4.4.9"], cwd=work)
+            run([installed, extracted / "dev/check_platform.py", "--output", work / "platform-with-tests"], cwd=work)
+            test_platform = json.loads((work / "platform-with-tests/platform-report.json").read_text())
+            assert test_platform["target"]["onnxruntime_absent"], "Test dependencies must not install ONNX Runtime"
+            report["test_install_onnxruntime_absent"] = True
             shutil.copytree(ROOT / "tests", extracted / "tests", dirs_exist_ok=True)
             shutil.copyfile(ROOT / "scripts/build_mcp_zip.py", extracted / "scripts/build_mcp_zip.py")
+            shutil.copyfile(ROOT / "dev/validate_package.py", extracted / "dev/validate_package.py")
             shutil.copyfile(ROOT / "pyproject.toml", extracted / "pyproject.toml")
             (extracted / "dist").mkdir()
             shutil.copyfile(wheel, extracted / "dist" / wheel.name)
             run([installed, "-m", "pytest", "-q", "-ra", "tests/test_install_mcp.py",
-                 "tests/test_native_runtime.py", "tests/test_ocr_process.py", "tests/test_unified_protocol.py",
+                 "tests/test_native_runtime.py", "tests/test_ocr_process.py", "tests/test_ocr_opencv.py",
+                 "tests/test_unified_protocol.py",
                  "tests/test_face_blurring.py", "--junitxml", work / "tests.xml"], cwd=extracted, timeout=900)
             report["native_contracts"] = "passed; consult pytest log for platform-specific skips"
         report["status"] = "passed"
@@ -164,7 +186,8 @@ def validate(work, prepare_only=False):
         print("PACKAGE REPORT " + json.dumps(report, sort_keys=True), flush=True)
         if os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
-                stream.write(f"### Package on {report['os']}\n\nStatus: **{report['status']}**; commit `{commit}`.\n\n")
+                identity = f"unpublished working tree based on `{commit}`" if unpublished else f"commit `{commit}`"
+                stream.write(f"### Package on {report['os']}\n\nStatus: **{report['status']}**; {identity}.\n\n")
                 stream.write(f"Elapsed: {report['seconds']} seconds. See job logs for commands, dependencies and failures.\n\n")
 
 
@@ -172,5 +195,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--work", type=Path, required=True, help="New directory outside the checkout")
     parser.add_argument("--prepare-only", action="store_true", help="Build/install/smoke without extra unit tests")
+    parser.add_argument("--unpublished", action="store_true", help="Validate local changes and record HEAD only as the base commit")
     args = parser.parse_args()
-    validate(args.work.resolve(), args.prepare_only)
+    validate(args.work.resolve(), args.prepare_only, args.unpublished)

@@ -46,7 +46,7 @@ def register_tools(server, context, service):
             if mode not in MODES:
                 raise ToolError(f"mode must be one of {sorted(MODES)}")
             context.require(
-                "pdf", "rapidocr", "onnxruntime", "cv2", "numpy", "pypdfium2"
+                "pdf", "rapidocr", "cv2", "numpy", "pypdfium2"
             )
             if context.config.pdf_engine == "mupdf":
                 context.require("mupdf", "pymupdf")

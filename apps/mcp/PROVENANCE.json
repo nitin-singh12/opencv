@@ -1,4 +1,5 @@
 {
+  "record_scope": "Historical snapshot of the original subproject import, not the current release identity. Copied file hashes and package version below describe that original snapshot. The installer ZIP's bundle.json identifies its current package and source state.",
   "upstream_repository": "https://github.com/opencv/opencv",
   "upstream_branch": "5.x",
   "upstream_commit": "247ea5144d5ecaf676a6f952b2eb985f77140053",

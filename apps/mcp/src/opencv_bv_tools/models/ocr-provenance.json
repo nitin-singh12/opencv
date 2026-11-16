@@ -1,0 +1,17 @@
+{
+  "asset": "ppocrv6-characters.txt",
+  "sha256": "f7aa897ca828a4c7c9e2739c30f9161a33306d532f020bcdb91dcfb664a5507e",
+  "characters": 18708,
+  "recognizer_output_classes": 18710,
+  "format": "Exact UTF-8 value of ONNX metadata character; splitlines matches RapidOCR. Decoder adds blank and space. No stripping or reordering.",
+  "source_model": "PP-OCRv6_rec_small.onnx",
+  "source_model_sha256": "6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884",
+  "source_distribution": "rapidocr==3.10.0",
+  "source_distribution_sha256": "2fc34e26cd0f48514804a94f8832283039c7334076bff60768b1fed9ad068050",
+  "extraction": "onnxruntime.InferenceSession(model).get_modelmeta().custom_metadata_map[\"character\"].encode(\"utf-8\")",
+  "extraction_tool_version": "onnxruntime==1.23.2 (development-time extraction only; not required to build, install or run the package)",
+  "license": "Apache-2.0",
+  "attribution": "Baidu / PaddlePaddle / PaddleOCR; RapidOCR model conversion and packaging. See companion MODEL_LICENSES.md.",
+  "model_license_url": "https://rapidai.github.io/RapidOCRDocs/main/en/model_licenses/",
+  "upstream_model_url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx"
+}

@@ -146,3 +146,48 @@
          logger.info("Initiating download: %s", url)
          try:
              response = requests.get(url, stream=True, timeout=cls.REQUEST_TIMEOUT)
+--- a/rapidocr/main.py
++++ b/rapidocr/main.py
+@@ -42 +42,2 @@
+-        self, config_path: Optional[str] = None, params: Optional[Dict[str, Any]] = None
++        self, config_path: Optional[str] = None, params: Optional[Dict[str, Any]] = None,
++        session_factory=None,
+@@ -43,0 +45,2 @@
++        # A supplied factory owns inference, including unsupported-task errors.
++        self.session_factory = session_factory
+@@ -131 +134,2 @@
+-                    self.text_det = TextDetector(self.cfg.Det)
++                    session = self.session_factory(self.cfg.Det) if self.session_factory else None
++                    self.text_det = TextDetector(self.cfg.Det, session=session)
+@@ -142 +146,2 @@
+-                    self.text_cls = TextClassifier(self.cfg.Cls)
++                    session = self.session_factory(self.cfg.Cls) if self.session_factory else None
++                    self.text_cls = TextClassifier(self.cfg.Cls, session=session)
+@@ -154 +159,2 @@
+-                    self.text_rec = TextRecognizer(self.cfg.Rec)
++                    session = self.session_factory(self.cfg.Rec) if self.session_factory else None
++                    self.text_rec = TextRecognizer(self.cfg.Rec, session=session)
+--- a/rapidocr/ch_ppocr_det/main.py
++++ b/rapidocr/ch_ppocr_det/main.py
+@@ -30 +30 @@
+-    def __init__(self, cfg: Dict[str, Any]):
++    def __init__(self, cfg: Dict[str, Any], session=None):
+@@ -47 +47 @@
+-        self.session = get_engine(cfg.engine_type)(cfg)
++        self.session = session if session is not None else get_engine(cfg.engine_type)(cfg)
+--- a/rapidocr/ch_ppocr_rec/main.py
++++ b/rapidocr/ch_ppocr_rec/main.py
+@@ -40 +40 @@
+-    def __init__(self, cfg: Dict[str, Any]):
++    def __init__(self, cfg: Dict[str, Any], session=None):
+@@ -44 +44 @@
+-        self.session = get_engine(cfg.engine_type)(cfg)
++        self.session = session if session is not None else get_engine(cfg.engine_type)(cfg)
+--- a/rapidocr/ch_ppocr_cls/main.py
++++ b/rapidocr/ch_ppocr_cls/main.py
+@@ -34 +34 @@
+-    def __init__(self, cfg: Dict[str, Any]):
++    def __init__(self, cfg: Dict[str, Any], session=None):
+@@ -40 +40 @@
+-        self.session = get_engine(cfg.engine_type)(cfg)
++        self.session = session if session is not None else get_engine(cfg.engine_type)(cfg)

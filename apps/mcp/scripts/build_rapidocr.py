@@ -20,11 +20,19 @@ import re
 import zipfile
 
 UPSTREAM_SHA256 = "2fc34e26cd0f48514804a94f8832283039c7334076bff60768b1fed9ad068050"
-VERSION = "3.10.0+bv.1"
+VERSION = "3.10.0+bv.2"
+CHANGE_NOTICE = (
+    b"# Modified for OpenCV BV tools from RapidOCR 3.10.0.\n"
+    b"# See BV-MODIFICATIONS.txt in the rapidocr distribution metadata for changes.\n"
+)
 PATCHED = {
     "rapidocr/utils/load_image.py",
     "rapidocr/utils/vis_res.py",
     "rapidocr/utils/download_file.py",
+    "rapidocr/main.py",
+    "rapidocr/ch_ppocr_det/main.py",
+    "rapidocr/ch_ppocr_rec/main.py",
+    "rapidocr/ch_ppocr_cls/main.py",
 }
 
 
@@ -41,11 +49,12 @@ def apply_patch(files, patch):
         output, cursor, index = [], 0, 2
         while index < len(lines):
             match = re.fullmatch(
-                r"@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@.*\n", lines[index]
+                r"@@ -(\d+)(?:,(\d+))? \+\d+(?:,\d+)? @@.*\n", lines[index]
             )
             if not match:
                 raise ValueError("Invalid patch hunk")
-            start = int(match[1]) - 1
+            # An insertion-only hunk starts after the numbered original line.
+            start = int(match[1]) if match[2] == "0" else int(match[1]) - 1
             if start < cursor:
                 raise ValueError("Overlapping patch hunks")
             output.extend(original[cursor:start])
@@ -77,6 +86,15 @@ def build(upstream, output):
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         files = {name: archive.read(name) for name in archive.namelist()}
     apply_patch(files, Path(__file__).with_name("rapidocr-array.patch").read_text())
+    for name in PATCHED:
+        # Preserve a first/second-line encoding declaration while marking each
+        # modified upstream file, as required by Apache-2.0 section 4(b).
+        lines = files[name].splitlines(keepends=True)
+        position = next((i + 1 for i, line in enumerate(lines[:2])
+                         if re.search(br"coding[:=]\s*[-\w.]+", line)), 0)
+        lines.insert(position, CHANGE_NOTICE)
+        files[name] = b"".join(lines)
+        compile(files[name], name, "exec")
     old_info = "rapidocr-3.10.0.dist-info/"
     new_info = f"rapidocr-{VERSION}.dist-info/"
     metadata = BytesParser(policy=compat32).parsebytes(files[old_info + "METADATA"])
@@ -103,6 +121,8 @@ def build(upstream, output):
         f"Upstream wheel SHA256: {UPSTREAM_SHA256}\n"
         "Modified utils/load_image.py, utils/vis_res.py and utils/download_file.py.\n"
         "Pillow and requests are optional; array OCR, algorithms and model bytes are unchanged.\n"
+        "Modified main.py and ch_ppocr_{det,rec,cls}/main.py to accept per-instance inference sessions.\n"
+        "The MCP application supplies OpenCV DNN sessions; default upstream engine behavior remains available.\n"
         "Install images for file/encoded-image/text-visualization helpers and downloads for HTTP helpers.\n"
         "URL image inputs require both extras. This is not an official upstream release.\n"
     ).encode()

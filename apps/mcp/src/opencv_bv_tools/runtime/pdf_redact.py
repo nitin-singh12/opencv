@@ -413,6 +413,13 @@ def ocr_page(rgb, detect):
         boxes += extra
     if back is not None:
         boxes = _mapped(boxes, back, w, h)
+        # Deskewing can obscure narrow sideways lines. Check the original
+        # page as well, and keep its boxes in original-page coordinates.
+        _, _, original_sideways = _found(rgb, detect)
+        if original_sideways:
+            more, extra = _turned(rgb, detect, original_sideways)
+            addresses |= more
+            boxes += extra
     return addresses, boxes
 
 

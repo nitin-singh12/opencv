@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "opencv-bv-tools"
-version = "0.10.0.dev1"
+version = "0.10.0.dev2"
 description = "Modular local image tools with one MCP server"
 readme = "README.md"
 license = "Apache-2.0 AND MIT"
@@ -31,11 +31,11 @@ scanner-test = ["pypdf==6.10.0", "psutil==7.2.2"]
 barcode-test = ["python-barcode==0.16.1", "psutil==7.2.2", "segno==1.6.6"]
 qr-test = ["segno==1.6.6", "qrcode==8.2", "psutil==7.2.2"]
 qr-benchmark = ["opencv-python-headless==5.0.0.93", "numpy==2.2.6", "psutil==7.2.2"]
-ocr = ["rapidocr==3.10.0+bv.1", "onnxruntime==1.23.2", "opencv-python-headless==5.0.0.93", "numpy==2.2.6"]
-pdf = ["rapidocr==3.10.0+bv.1", "onnxruntime==1.23.2", "opencv-python-headless==5.0.0.93", "numpy==2.2.6", "pypdfium2==5.14.0"]
+ocr = ["rapidocr==3.10.0+bv.2", "opencv-python-headless==5.0.0.93", "numpy==2.2.6"]
+pdf = ["rapidocr==3.10.0+bv.2", "opencv-python-headless==5.0.0.93", "numpy==2.2.6", "pypdfium2==5.14.0"]
 mupdf = ["pymupdf==1.28.2"]
 lite = ["mcp==2.3.0", "zxing-cpp==3.1.1", "pyoxipng==9.1.1"]
-all = ["mcp==2.3.0", "zxing-cpp==3.1.1", "pyoxipng==9.1.1", "opencv-python-headless==5.0.0.93", "numpy==2.2.6", "rapidocr==3.10.0+bv.1", "onnxruntime==1.23.2", "pypdfium2==5.14.0"]
+all = ["mcp==2.3.0", "zxing-cpp==3.1.1", "pyoxipng==9.1.1", "opencv-python-headless==5.0.0.93", "numpy==2.2.6", "rapidocr==3.10.0+bv.2", "pypdfium2==5.14.0"]
 
 [project.scripts]
 opencv-bv-mcp = "opencv_bv_tools.server:main"
@@ -48,7 +48,7 @@ opencv-bv-scan-document = "opencv_bv_tools.document_scanner:main"
 opencv-bv-redact-pdf = "opencv_bv_tools.runtime.pdf_redact:main"
 
 [tool.setuptools.package-data]
-opencv_bv_tools = ["models/*.onnx", "models/*LICENSE", "models/*.json"]
+opencv_bv_tools = ["models/*.onnx", "models/*LICENSE", "models/*.json", "models/*.txt"]
 
 [tool.setuptools]
 include-package-data = false

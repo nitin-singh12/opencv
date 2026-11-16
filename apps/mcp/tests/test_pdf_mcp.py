@@ -43,6 +43,80 @@ def test_pdf_config_limits(options):
         ServerConfig(allow_any_path=True, **options).validate()
 
 
+def test_pdf_sideways_text_on_original_page_after_deskew(monkeypatch):
+    import numpy as np
+    from opencv_bv_tools.runtime import pdf_redact as pdf
+
+    original = np.zeros((60, 80, 3), dtype=np.uint8)
+    straight = np.zeros((70, 90, 3), dtype=np.uint8)
+    transform = object()
+    monkeypatch.setattr(pdf, "skew", lambda image: 0.5)
+    monkeypatch.setattr(pdf, "_straightened", lambda image, angle: (straight, transform))
+    monkeypatch.setattr(pdf, "_found", lambda image, detect: (
+        ({"straight@example.com"}, [[1, 2, 3, 4]], []) if image is straight
+        else (set(), [], [[60, 5, 8, 40]])
+    ))
+    monkeypatch.setattr(pdf, "_mapped", lambda boxes, back, w, h: [[10, 20, 3, 4]])
+    monkeypatch.setattr(pdf, "_turned", lambda image, detect, sideways: (
+        {"margin@example.com"}, [[60, 5, 8, 40]]
+    ))
+    addresses, boxes = pdf.ocr_page(original, lambda image: None)
+    assert addresses == {"straight@example.com", "margin@example.com"}
+    assert boxes == [[10, 20, 3, 4], [60, 5, 8, 40]]
+
+
+def test_pdf_does_not_repeat_sideways_check_on_straight_page(monkeypatch):
+    import numpy as np
+    from opencv_bv_tools.runtime import pdf_redact as pdf
+
+    image = np.zeros((60, 80, 3), dtype=np.uint8)
+    calls = []
+    monkeypatch.setattr(pdf, "skew", lambda page: 0.0)
+    monkeypatch.setattr(pdf, "_found", lambda page, detect: (calls.append(page) or set(), [], []))
+    addresses, boxes = pdf.ocr_page(image, lambda page: None)
+    assert addresses == set() and boxes == [] and len(calls) == 1
+
+
+@pytest.mark.parametrize("hit_on_call, expected", [
+    (0, [31, 15, 12, 10]),
+    (1, [7, 75, 12, 10]),
+])
+def test_pdf_sideways_boxes_map_back_for_both_directions(monkeypatch, hit_on_call, expected):
+    import numpy as np
+    from opencv_bv_tools.runtime import pdf_redact as pdf
+
+    calls = []
+    def found(image, detect):
+        index = len(calls)
+        calls.append(image.shape)
+        return ({"margin@example.com"}, [[5, 7, 10, 12]], []) if index == hit_on_call else (set(), [], [])
+
+    monkeypatch.setattr(pdf, "_found", found)
+    addresses, boxes = pdf._turned(np.zeros((100, 100, 3), dtype=np.uint8), None, [[20, 30, 10, 40]])
+    assert addresses == {"margin@example.com"}
+    assert boxes == [expected]
+    assert calls == [(50, 80, 3), (50, 80, 3)]
+
+
+def test_pdf_rechecks_original_sideways_even_when_deskewed_line_overlaps(monkeypatch):
+    import numpy as np
+    from opencv_bv_tools.runtime import pdf_redact as pdf
+
+    original = np.zeros((60, 80, 3), dtype=np.uint8)
+    straight = np.zeros_like(original)
+    line = [[60, 5, 8, 40]]
+    monkeypatch.setattr(pdf, "skew", lambda image: 0.5)
+    monkeypatch.setattr(pdf, "_straightened", lambda image, angle: (straight, object()))
+    monkeypatch.setattr(pdf, "_mapped", lambda boxes, back, w, h: boxes)
+    monkeypatch.setattr(pdf, "_found", lambda image, detect: (set(), [], line))
+    monkeypatch.setattr(pdf, "_turned", lambda image, detect, sideways: (
+        (set(), []) if image is straight else ({"margin@example.com"}, line)
+    ))
+    addresses, boxes = pdf.ocr_page(original, lambda image: None)
+    assert addresses == {"margin@example.com"}
+    assert boxes == line
+
+
 def test_pdf_image_pdf_reuses_worker_and_resets_settings(tmp_path):
     from pypdf import PdfReader
     service = EmailService(ToolContext(ServerConfig(allow_dirs=(tmp_path,), threads=2)))
@@ -65,6 +139,43 @@ def test_pdf_image_pdf_reuses_worker_and_resets_settings(tmp_path):
             service.run_pdf(b"not a PDF", "fast")
         recovered, _ = service.run(png.getvalue(), "accurate")
         assert recovered["pid"] != last["pid"] and recovered["boxes"] == middle["boxes"]
+    finally:
+        service.close()
+
+
+def test_pdf_redaction_covers_rendered_address_and_preserves_page_size(tmp_path):
+    from contextlib import closing
+    import math
+    import numpy as np
+    import pypdfium2 as pdfium
+
+    source = make_pdf()
+    service = EmailService(ToolContext(ServerConfig(allow_dirs=(tmp_path,), threads=2)))
+    try:
+        result, payload = service.run_pdf(source, "accurate")
+        with payload:
+            redacted = payload.read()
+        assert result["boxes_per_page"] == [1]
+        with pdfium.PdfDocument(source) as before, pdfium.PdfDocument(redacted) as after:
+            with closing(before[0]) as original, closing(after[0]) as output:
+                assert output.get_size() == pytest.approx(original.get_size())
+                with closing(original.get_textpage()) as text:
+                    content = text.get_text_range()
+                    address = "support@example.com"
+                    start = content.index(address)
+                    bounds = [text.get_charbox(i) for i in range(start, start + len(address))]
+                with closing(output.get_textpage()) as text:
+                    assert "@" not in text.get_text_range()
+                    assert "Public" in text.get_text_range()
+                scale = 3
+                left, bottom = min(b[0] for b in bounds), min(b[1] for b in bounds)
+                right, top = max(b[2] for b in bounds), max(b[3] for b in bounds)
+                height = output.get_height()
+                x0, x1 = math.ceil(left * scale), math.floor(right * scale)
+                y0, y1 = math.ceil((height - top) * scale), math.floor((height - bottom) * scale)
+                with closing(output.render(scale=scale)) as bitmap:
+                    crop = bitmap.to_numpy()[y0:y1, x0:x1, :3]
+                    assert crop.size and not np.any(crop), "Rendered address must be fully blacked out"
     finally:
         service.close()
 

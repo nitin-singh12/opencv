@@ -16,7 +16,7 @@ from types import SimpleNamespace
 import psutil
 import pytest
 
-from opencv_bv_tools.runtime import safe_files
+from opencv_bv_tools.runtime import safe_files, worker_process
 from opencv_bv_tools.runtime.process_support import peak_rss_kib, start_worker, stop_worker
 from opencv_bv_tools.runtime.worker_process import _run_worker
 
@@ -86,16 +86,44 @@ def test_uncooperative_worker_is_bounded(code, reason):
     assert time.monotonic() - started < 5
 
 
-def test_repeated_timeout_has_no_process_or_thread_leak():
+def test_repeated_timeout_has_no_process_or_thread_leak(monkeypatch):
     process = psutil.Process()
-    before = {p.pid for p in process.children(recursive=True)}
     threads = process.num_threads()
-    for _ in range(5):
-        result = _run_worker(b"x", {"limits": {}}, timeout=0.15,
-                             command=[sys.executable, "-c", "import time;time.sleep(20)"])
-        assert result["stop_reason"] == "deadline_exceeded"
-    assert {p.pid for p in process.children(recursive=True)} <= before
-    assert process.num_threads() <= threads
+    workers = []
+    launch = worker_process.start_worker
+
+    def track_worker(*args, **kwargs):
+        worker = launch(*args, **kwargs)
+        workers.append(worker)
+        return worker
+
+    # Sandboxed macOS may forbid enumerating processes through sysctl().
+    monkeypatch.setattr(worker_process, "start_worker", track_worker)
+    try:
+        for count in range(1, 6):
+            result = _run_worker(b"x", {"limits": {}}, timeout=0.15,
+                                 command=[sys.executable, "-c", "import time;time.sleep(20)"])
+            assert result["stop_reason"] == "deadline_exceeded"
+            assert len(workers) == count
+            worker = workers[-1]
+            # Do not poll/wait here: _run_worker must have already reaped it.
+            assert worker.returncode is not None, "Timed-out worker was not reaped"
+            assert all(stream.closed for stream in (worker.stdin, worker.stdout, worker.stderr)), \
+                "Timed-out worker left a pipe open"
+        assert process.num_threads() <= threads
+    finally:
+        failed = sys.exc_info()[0] is not None
+        cleanup_error = None
+        for worker in workers:
+            try:
+                stop_worker(worker)  # Also releases a Windows Job Object, if present.
+            except Exception as error:
+                cleanup_error = error
+            finally:
+                for stream in (worker.stdin, worker.stdout, worker.stderr):
+                    stream.close()
+        if cleanup_error is not None and not failed:
+            raise cleanup_error
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups")

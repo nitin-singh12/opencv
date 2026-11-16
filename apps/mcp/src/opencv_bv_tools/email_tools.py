@@ -59,7 +59,7 @@ class EmailService:
     def load(self, image_path, image_base64):
         if bool(image_path) == bool(image_base64):
             raise ToolError("Give exactly one of image_path or image_base64.")
-        self.context.require("ocr", "rapidocr", "onnxruntime", "cv2", "numpy")
+        self.context.require("ocr", "rapidocr", "cv2", "numpy")
         real, protect = None, set()
         if image_path:
             data, real, protect = self.context.read(image_path)

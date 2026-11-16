@@ -36,12 +36,13 @@ FILES = {
     'tests/fixtures/face/README.md': 'tests/fixtures/face/README.md',
     'tests/fixtures/face/provenance.json': 'tests/fixtures/face/provenance.json',
     'docs/licenses/YUNET-LICENSE.txt': 'docs/licenses/YUNET-LICENSE.txt',
+    'docs/licenses/RAPIDOCR-MODEL-NOTICES.txt': 'docs/licenses/RAPIDOCR-MODEL-NOTICES.txt',
     'docs/licenses/FLATBUFFERS-LICENSE.txt': 'docs/licenses/FLATBUFFERS-LICENSE.txt',
     'docs/lightweight-branch.md': 'docs/lightweight-branch.md',
 }
 
 
-def bundle_document(data, source, destination, unpublished=False):
+def bundle_document(data, source, destination, source_commit, unpublished=False):
     """Keep included links local; link omitted source/test evidence to the repo."""
     destination_by_source = {value: key for key, value in FILES.items()}
 
@@ -57,7 +58,7 @@ def bundle_document(data, source, destination, unpublished=False):
             # Local preparation can contain paths that have not been published yet.
             return f"{label} (source checkout: `{source_target}`)"
         else:
-            link = "https://github.com/nitin-singh12/opencv/blob/mcp-vision-tools/apps/mcp/" + quote(source_target)
+            link = f"https://github.com/nitin-singh12/opencv/blob/{source_commit}/apps/mcp/" + quote(source_target)
         if parsed.fragment:
             link += "#" + parsed.fragment
         return f"[{label}]({link})"
@@ -81,25 +82,35 @@ def build(root, wheel, output, source_commit, unpublished=False, rapidocr_wheel=
     entries = {name: (root / source).read_bytes() for name, source in FILES.items()}
     for name, source in FILES.items():
         if name.endswith(".md"):
-            entries[name] = bundle_document(entries[name], source, name, unpublished)
+            entries[name] = bundle_document(entries[name], source, name, source_commit, unpublished)
     wheel_path = "wheels/" + wheel.name
     entries[wheel_path] = wheel.read_bytes()
     dependencies=[]
-    if any("rapidocr==3.10.0+bv.1" in requirement
-           for requirement in metadata.get_all("Requires-Dist", [])):
-        companion = rapidocr_wheel or root / "wheels/rapidocr-3.10.0+bv.1-py3-none-any.whl"
+    ocr_requirements = [requirement for requirement in metadata.get_all("Requires-Dist", [])
+                        if re.split(r"[ ;(<>=!~\[]", requirement, 1)[0].lower() == "rapidocr"]
+    if any(not re.fullmatch(r"rapidocr\s*==\s*3\.10\.0\+bv\.2\s*(?:;.*)?", requirement, re.IGNORECASE)
+           for requirement in ocr_requirements):
+        raise ValueError("Package wheel must require RapidOCR 3.10.0+bv.2")
+    if ocr_requirements:
+        companion = rapidocr_wheel or root / "wheels/rapidocr-3.10.0+bv.2-py3-none-any.whl"
         with zipfile.ZipFile(companion) as archive:
+            companion_metadata = [name for name in archive.namelist() if name.endswith(".dist-info/METADATA")]
+            if len(companion_metadata) != 1:
+                raise ValueError("Expected one RapidOCR companion metadata file")
             companion_meta = BytesParser().parsebytes(
-                archive.read("rapidocr-3.10.0+bv.1.dist-info/METADATA"), headersonly=True)
-            if companion_meta["Name"] != "rapidocr" or companion_meta["Version"] != "3.10.0+bv.1":
+                archive.read(companion_metadata[0]), headersonly=True)
+            if companion_meta["Name"] != "rapidocr" or companion_meta["Version"] != "3.10.0+bv.2":
                 raise ValueError("Wrong RapidOCR companion wheel")
         dependency_path = "wheels/" + companion.name
         entries[dependency_path] = companion.read_bytes()
         dependencies.append({"wheel": dependency_path, "sha256": hashlib.sha256(entries[dependency_path]).hexdigest()})
     manifest = {"name": "opencv-bv-server", "package_version": version,
-                "package_source_commit": None if unpublished else source_commit,
+                # The standalone builder cannot prove that either supplied wheel
+                # was built from this commit. The validator records that separately.
+                "package_source_commit": None,
+                "claimed_source_commit": None if unpublished else source_commit,
                 "base_commit": source_commit if unpublished else None,
-                "source_state": "local-unpublished" if unpublished else "committed",
+                "source_state": "local-unpublished" if unpublished else "source-claimed",
                 "wheel": wheel_path, "dependency_wheels": dependencies,
                 "wheel_sha256": hashlib.sha256(entries[wheel_path]).hexdigest(),
                 "files_sha256": {name: hashlib.sha256(data).hexdigest() for name, data in sorted(entries.items())}}
@@ -115,7 +126,7 @@ def build(root, wheel, output, source_commit, unpublished=False, rapidocr_wheel=
     output.with_suffix(output.suffix + ".sha256").write_text(f"{digest}  {output.name}\n")
     print(json.dumps({"zip": str(output.resolve()), "bytes": output.stat().st_size,
                       "sha256": digest, "files": len(entries), "source_state": manifest["source_state"],
-                      "package_source_commit": manifest["package_source_commit"], "base_commit": manifest["base_commit"]}, indent=2))
+                      "claimed_source_commit": manifest["claimed_source_commit"], "base_commit": manifest["base_commit"]}, indent=2))
 
 
 def main():

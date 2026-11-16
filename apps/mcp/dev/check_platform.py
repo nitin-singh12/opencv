@@ -31,7 +31,7 @@ import tempfile
 
 packages = ["opencv-bv-tools", "Pillow", "mcp", "zxing-cpp", "pyoxipng",
             "reportlab", "requests", "charset-normalizer", "opencv-python-headless", "numpy",
-            "rapidocr", "onnxruntime", "pypdfium2", "segno"]
+            "rapidocr", "onnxruntime", "onnxruntime-gpu", "pypdfium2", "segno"]
 versions = {}
 for name in packages:
     try:
@@ -63,10 +63,13 @@ try:
                 "blur_faces", "scan_document", "find_emails", "redact_emails", "redact_pdf"}
     heavy = sorted(set(sys.modules) & {"cv2", "numpy", "rapidocr", "onnxruntime", "pypdfium2", "pymupdf"})
     result.update(tools=names, heavy_imports=heavy)
-    optional = {"Pillow", "reportlab", "requests", "charset-normalizer", "segno"}
+    optional = {"Pillow", "reportlab", "requests", "charset-normalizer", "segno", "onnxruntime", "onnxruntime-gpu"}
     missing = [name for name, version in versions.items() if version is None and name not in optional]
     result["missing_runtime_dependencies"] = missing
-    result["status"] = "registration_only_passed" if set(names) == expected and not heavy and not missing else "blocked"
+    result["onnxruntime_absent"] = (versions["onnxruntime"] is None and versions["onnxruntime-gpu"] is None
+                                    and importlib.util.find_spec("onnxruntime") is None)
+    result["status"] = ("registration_only_passed" if set(names) == expected and not heavy and not missing
+                        and result["onnxruntime_absent"] else "blocked")
 except Exception as error:
     result.update(status="blocked", startup_error={"type": type(error).__name__, "message": str(error)})
 print(json.dumps(result, ensure_ascii=True, allow_nan=False))

@@ -2,11 +2,17 @@
 
 An experimental Python application in a personal OpenCV fork. One local MCP
 server exposes nine tools, with separate modules for each feature. This application
-uses a pinned `opencv-python-headless` wheel; it does not build or extend `cv2`
-from this checkout. No OpenCV CMake files are changed. This is not an official
+uses a pinned `opencv-python-headless` wheel by default. An additional validation
+job builds OpenCV from this checkout and tests the application against that build.
+No OpenCV CMake files are changed. This is not an official
 OpenCV release or an accepted upstream contribution.
 
-**Status:** experimental version `0.10.0.dev1` on `mcp-vision-tools`.
+**Status:** experimental version `0.10.0.dev2` on `mcp-vision-tools`.
+Email OCR now uses OpenCV DNN on CPU. A clean Linux ZIP installation passed all
+nine MCP tools, and the full application suite passed 1,439 tests with 26
+Windows-only skips. Original-corpus validation and the new backend's native
+Windows/macOS and OpenCV source-build results are tracked in the
+[validation notes](docs/lightweight-branch.md#native-and-source-validation).
 Application code uses Apache-2.0; bundled models and dependencies retain their
 own terms. See [LICENSE](LICENSE) and [LICENSING.md](LICENSING.md).
 Source commits and imported file hashes are recorded in [PROVENANCE.json](PROVENANCE.json).
@@ -36,9 +42,11 @@ has been removed.
 
 ## Install from source
 
-Use **Python 3.12**. The current lightweight variant has Linux x86-64 validation.
-Windows x64 and macOS arm64 setup paths are provided, but this variant still needs
-native tests there. Earlier branch results do not certify this version.
+Use **Python 3.12**. Earlier native validation covered Linux x86-64, Windows x64
+and macOS arm64. Those results predate the OpenCV DNN OCR backend and do not
+establish acceptance of `0.10.0.dev2`. See the
+[validation results](docs/lightweight-branch.md#native-and-source-validation)
+for historical coverage and the new backend's pending checks.
 
 The native validation workflow builds and installs this exact branch on Linux
 x86-64, Windows x64 and Apple Silicon macOS with Python 3.12. Its Linux source
@@ -47,8 +55,11 @@ build. Consult the workflow's individual job results; a wheel build alone does
 not establish native runtime or source-build compatibility.
 
 From the repository root, enter `apps/mcp`. First build the required RapidOCR
-companion wheel. It makes Pillow and HTTP helpers optional without changing the
-OCR algorithms or model bytes. The builder checks the upstream wheel's SHA-256.
+companion wheel, `rapidocr==3.10.0+bv.2`. It makes Pillow and HTTP helpers optional
+and allows this application to supply an inference-session factory per OCR
+instance. Model bytes and OCR pre/postprocessing are unchanged. Without a
+factory, the companion retains upstream inference-session behavior. The builder
+checks the upstream wheel's SHA-256.
 
 Linux/macOS shell:
 
@@ -174,16 +185,23 @@ On Windows use the installed Python path printed by the installer, followed by
 
 | Dependency | Required for |
 | --- | --- |
-| `opencv-python-headless==5.0.0.93`, `numpy==2.2.6` | Shared image processing and face detection |
+| `opencv-python-headless==5.0.0.93`, `numpy==2.2.6` | Shared image processing, face detection and CPU OCR inference |
 | `mcp==2.3.0` | MCP protocol |
 | `zxing-cpp==3.1.1` | QR and barcode decoding |
 | `pyoxipng==9.1.1` | Lossless PNG optimization |
-| `rapidocr==3.10.0+bv.1`, `onnxruntime==1.23.2` | Email OCR |
+| `rapidocr==3.10.0+bv.2` | OCR preprocessing, detection/recognition orchestration and postprocessing |
 | `pypdfium2==5.14.0` | PDF reading/rendering for PDF redaction |
 
 The default installer selects `all`. These are direct dependencies; they also
 install their own dependencies. Default runtime does not require Pillow,
-ReportLab, requests or charset-normalizer. The optional `cmyk` extra installs
+ReportLab, requests, charset-normalizer, the Python `onnxruntime` package or a
+separate Python `onnx` parser. OpenCV DNN loads the bundled ONNX models directly.
+The supported OCR configuration is CPU-only PP-OCRv6 small detection and
+recognition, using the unchanged RapidOCR model bytes. The recognition dictionary
+is packaged at `models/ppocrv6-characters.txt`, extracted from that exact model's
+metadata with [recorded provenance](src/opencv_bv_tools/models/ocr-provenance.json).
+Arbitrary model downloads and CUDA OCR are
+unsupported. The optional `cmyk` extra installs
 Pillow to preserve original CMYK JPEG normalization for email processing.
 The optional MuPDF engine is separately licensed and is not installed by default.
 See [third-party notices](THIRD_PARTY_NOTICES.md).
@@ -205,10 +223,10 @@ environment:
 
 ```bash
 python3.12 -m venv .venv-dev
-.venv-dev/bin/python -m pip install -c install-constraints.txt '.[all,test,png-test,scanner-test,barcode-test,qr-test,face-test]' wheels/rapidocr-3.10.0+bv.1-py3-none-any.whl
+.venv-dev/bin/python -m pip install -c install-constraints.txt '.[all,test,png-test,scanner-test,barcode-test,qr-test,face-test]' wheels/rapidocr-3.10.0+bv.2-py3-none-any.whl
 .venv-dev/bin/python -m pytest tests
 .venv-dev/bin/python -m build --wheel
-.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev1-py3-none-any.whl --source-commit "$(git rev-parse HEAD)" --unpublished
+.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev2-py3-none-any.whl --source-commit "$(git rev-parse HEAD)" --unpublished
 ```
 
 On Windows use `.venv-dev\Scripts\python.exe` and obtain the SHA with
@@ -216,11 +234,13 @@ On Windows use `.venv-dev\Scripts\python.exe` and obtain the SHA with
 they are not default runtime requirements. `--unpublished` identifies a local
 working-tree build. A release must use a reviewed commit and its exact artifacts.
 
-Known limits: intermittent QR fixture-generation failures, a PDF
-cancellation/recovery failure in a broad suite, one native MCP startup crash
-during relocation checks, and untested native Windows/macOS execution for this
-variant. The current fork preparation does not claim these are fixed. See
-[lightweight notes](docs/lightweight-branch.md).
+Known limits include missed small faces and difficult email/code images.
+The full Linux suite passed on explicitly selected CPU cores after a pure
+Python QR-generator probe reproduced host instability on another core.
+This does not establish unrestricted host stability or replace native testing
+on other systems. Six original Kaggle barcode/QR images remain unavailable.
+See [lightweight notes](docs/lightweight-branch.md) for measured coverage and
+the preserved earlier failures.
 
 If a tool is missing, restart the client and check its server configuration. For
 folder-access errors, rerun setup with the relevant folder and `--replace`. For
@@ -250,5 +270,5 @@ Follow OpenCV's [contribution guidelines](https://github.com/opencv/opencv/wiki/
 and the applicable parts of its [coding guide](https://github.com/opencv/opencv/wiki/Coding_Style_Guide).
 The latter describes C++ modules; it is not a requirement to rewrite this Python
 application or apply C++ naming rules to it. This fork does not establish an
-official OpenCV MCP packaging convention. Native platform validation and the
-known failures above remain work before an upstream or stable-release claim.
+official OpenCV MCP packaging convention. The known failures above and upstream
+maintainer review remain work before an upstream or stable-release claim.

@@ -18,7 +18,6 @@ Usage:
 The input is never changed, and an existing output is only replaced with --overwrite.
 """
 import argparse
-import hashlib
 import io
 import json
 import os
@@ -31,6 +30,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from . import image_io
+from .ocr_opencv import OpenCVSession, check_models
 
 # --------------------------------------------------------------------------
 # Address pattern
@@ -123,32 +123,7 @@ class Line:
 # Model sets RapidOCR can load: (detector, recogniser) as (version, size, language).
 MODEL_SETS = {
     "v6-small": (("PP-OCRv6", "small", "ch"), ("PP-OCRv6", "small", "ch")),
-    "v6-tiny": (("PP-OCRv6", "tiny", "ch"), ("PP-OCRv6", "tiny", "ch")),
-    "v5-mobile": (("PP-OCRv5", "mobile", "ch"), ("PP-OCRv5", "mobile", "ch")),
-    "v4-mobile-en": (("PP-OCRv4", "mobile", "ch"), ("PP-OCRv4", "mobile", "en")),
 }
-
-
-# The default models ship inside the rapidocr 3.10.0 wheel. They are checked
-# before loading, so RapidOCR never fetches replacements at run time.
-MODEL_SHA256 = {
-    "PP-OCRv6_det_small.onnx": "090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f",
-    "PP-OCRv6_rec_small.onnx": "6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884",
-}
-
-
-def check_models():
-    """Raise RuntimeError if the v6-small model files are missing or changed."""
-    import rapidocr
-    folder = Path(rapidocr.__file__).parent / "models"
-    for name, digest in MODEL_SHA256.items():
-        try:
-            actual = hashlib.sha256((folder / name).read_bytes()).hexdigest()
-        except OSError:
-            actual = None
-        if actual != digest:
-            raise RuntimeError(f"The OCR model {folder / name} is missing or has changed. "
-                               "Run install.sh again to restore it.")
 
 
 def _normalise(crop):
@@ -277,21 +252,13 @@ class Ocr:
                  size_guard=False, pdf_forms=False):
         from rapidocr import RapidOCR
         from rapidocr.utils.typings import LangDet, LangRec, ModelType, OCRVersion
+        if models not in MODEL_SETS or device != "cpu":
+            raise ValueError("OpenCV OCR supports only the bundled v6-small models on CPU.")
         (dv, ds, dl), (rv, rs, rl) = MODEL_SETS[models]
         self.models = models
-        extra = {}
-        if threads:
-            extra["EngineConfig.onnxruntime.intra_op_num_threads"] = threads
-        if device == "cuda":
-            # Needs onnxruntime-gpu. preload_dlls() finds the CUDA and cuDNN
-            # libraries installed from pip.
-            import onnxruntime
-            onnxruntime.preload_dlls()
-            extra["EngineConfig.onnxruntime.use_cuda"] = True
-            # RapidOCR's default makes cuDNN benchmark every new input shape,
-            # and every text line has a new width; pick algorithms by heuristic.
-            extra["EngineConfig.onnxruntime.cuda_ep_cfg.cudnn_conv_algo_search"] = "HEURISTIC"
-        self.engine = RapidOCR(params={**extra,
+        # Thread limits belong to the worker/CLI, not individual sessions.
+        self.engine = RapidOCR(session_factory=OpenCVSession, params={
+            "Global.use_cls": False,
             # Our own strips keep tall screenshots at full resolution, so the
             # library must not shrink them again.
             "Global.max_side_len": 100000,
@@ -314,12 +281,12 @@ class Ocr:
         self.pdf_forms = pdf_forms
 
     def providers(self):
-        """Execution providers each model actually runs on (after first use)."""
+        """Inference backends of models loaded so far."""
         out = {}
         for name in ("text_det", "text_rec"):
             model = getattr(self.engine, name, None)
             if model is not None:
-                out[name] = model.session.session.get_providers()
+                out[name] = ["OpenCV DNN CPU"]
         return out
 
     def lines(self, rgb):
@@ -1072,7 +1039,7 @@ def main():
                     help="accurate also finds faint or colour-on-colour text; fast is about twice as fast on CPU")
     ap.add_argument("--threads", type=int, default=4, help="CPU threads to use (default 4)")
     ap.add_argument("--models", choices=sorted(MODEL_SETS), default="v6-small",
-                    help="OCR models; sets other than v6-small are downloaded from ModelScope on first use")
+                    help="bundled OCR models (no downloads)")
     args = ap.parse_args()
     anywhere = sf.Folders(None)
     try:
