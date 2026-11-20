@@ -1,11 +1,39 @@
 # SPDX-License-Identifier: Apache-2.0
 """Connect an installed MCP server to a local client."""
 import argparse
+import importlib
 import importlib.util
 import json
 from pathlib import Path
 import shutil
+import site
 import sys
+import sysconfig
+
+
+def server_executable():
+    """Use the Python environment's scripts directory, including user installs."""
+    package_root = Path(__file__).resolve().parent.parent
+    user_site = Path(site.getusersitepackages()).resolve()
+    if package_root == user_site:
+        scripts = sysconfig.get_path("scripts", scheme=sysconfig.get_preferred_scheme("user"))
+    else:
+        scripts = sysconfig.get_path("scripts")
+    suffix = ".exe" if sys.platform == "win32" else ""
+    return Path(scripts) / ("opencv-bv-mcp" + suffix)
+
+
+def load_installer():
+    """Use the wheel helper or the checkout helper for editable installs."""
+    if importlib.util.find_spec("opencv_bv_tools._installation") is not None:
+        return importlib.import_module("opencv_bv_tools._installation")
+    path = Path(__file__).resolve().parents[2] / "scripts" / "install_mcp.py"
+    if not path.is_file():
+        raise ImportError("The installation helper is missing")
+    spec = importlib.util.spec_from_file_location("opencv_bv_installation", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def main(argv=None):
@@ -18,7 +46,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     # Imported only after argparse, so --help stays lightweight.
-    from opencv_bv_tools import _installation as installer
+    installer = load_installer()
 
     try:
         if importlib.util.find_spec("cv2") is None:
@@ -36,7 +64,7 @@ def main(argv=None):
             if client is None:
                 raise installer.InstallError("Choose 1, 2, or 3 and try again.")
         folders, any_path = installer.choose_access(args.allow_dir, args.allow_any_path, True)
-        server = installer.executable(Path(sys.executable).parent.parent, "opencv-bv-mcp")
+        server = server_executable()
         if not server.is_file():
             raise installer.InstallError(f"The installed server command was not found: {server}")
         server_args = (["--allow-any-path"] if any_path else

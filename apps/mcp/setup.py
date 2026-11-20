@@ -66,8 +66,9 @@ class PackageBuild(build_py):
         super().run()
         # Share the installer's existing registration and access helpers with
         # the installed setup command, without maintaining a second copy.
-        self.copy_file(str(root / "scripts" / "install_mcp.py"),
-                       str(Path(self.build_lib) / "opencv_bv_tools" / "_installation.py"))
+        destination = Path(self.build_lib) / "opencv_bv_tools"
+        destination.mkdir(parents=True, exist_ok=True)
+        self.copy_file(str(root / "scripts" / "install_mcp.py"), str(destination / "_installation.py"))
 
 
 class NativeBuild(build_ext):

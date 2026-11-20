@@ -2,7 +2,7 @@ name: MCP native and source validation
 
 on:
   push:
-    branches: [mcp-vision-tools]
+    branches: [mcp-vision-tools, mcp-prebuilt-wheels, mcp-source-install]
     paths: ['apps/mcp/**', '3rdparty/clipper/**', '3rdparty/pdfium/**', '3rdparty/zxing/**', '3rdparty/zxing-integration/**', 'CMakeLists.txt', '.github/workflows/mcp-vision-tools.yml']
 
 permissions:

@@ -324,9 +324,10 @@ def test_zip_is_deterministic_and_excludes_environments(tmp_path):
     builder = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(builder)
     version = tomllib.loads((REPO / "pyproject.toml").read_text())["project"]["version"]
-    wheel = REPO / f"dist/opencv_bv_tools-{version}-py3-none-any.whl"
-    if not wheel.exists():
+    wheels = sorted((REPO / "dist").glob(f"opencv_bv_tools-{version}-*.whl"))
+    if not wheels:
         pytest.skip("build the wheel first to test the release archive")
+    wheel = wheels[-1]
     first, second = tmp_path / "one.zip", tmp_path / "two.zip"
     for output in (first, second):
         builder.build(REPO, wheel, output, "22269df80dec6d2ffa68e6f97d10d5d8ce2d6d73", unpublished=True)
@@ -350,9 +351,10 @@ def test_built_wheel_includes_model_notices_and_weights():
     import hashlib
     from email.parser import BytesParser
     version = tomllib.loads((REPO / "pyproject.toml").read_text())["project"]["version"]
-    app = REPO / f"dist/opencv_bv_tools-{version}-py3-none-any.whl"
-    if not app.exists():
+    wheels = sorted((REPO / "dist").glob(f"opencv_bv_tools-{version}-*.whl"))
+    if not wheels:
         pytest.skip("build the wheel first to check distribution assets")
+    app = wheels[-1]
     from opencv_bv_tools.runtime.ocr_opencv import MODELS
     with zipfile.ZipFile(app) as archive:
         metadata_path, = [name for name in archive.namelist() if name.endswith(".dist-info/METADATA")]

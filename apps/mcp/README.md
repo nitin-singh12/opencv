@@ -8,7 +8,8 @@ The OpenCV build includes optional, disabled-by-default native targets for the
 bundled dependencies. This is not an official OpenCV release or an accepted
 upstream contribution.
 
-**Status:** experimental version `0.10.0.dev6` on `mcp-vision-tools`.
+**Status:** experimental version `0.10.0.dev7`. The `mcp-prebuilt-wheels` and
+`mcp-source-install` branches support wheel and application-source testing.
 The RapidOCR-free and bundled PDFium implementations are experimental and are
 not a public release. On Linux, the installed wheel passed 1,477 tests, with 26
 Windows-only skips. A comparison against the previous implementation covered
@@ -82,7 +83,7 @@ After extracting a prepared ZIP, users who prefer pip can install the local
 application wheel and resolve the other dependencies from their configured index:
 
 ```bash
-python -m pip install -c install-constraints.txt --find-links wheels 'opencv-bv-tools[all,wheel]==0.10.0.dev6'
+python -m pip install -c install-constraints.txt --find-links wheels 'opencv-bv-tools[all,wheel]==0.10.0.dev7'
 ```
 
 Use Python 3.12 in an isolated environment. This command installs the package;
@@ -102,7 +103,7 @@ For a downloaded wheel, this example uses the Linux filename from its download
 directory. Replace the name with the actual wheel for your platform:
 
 ```bash
-python -m pip install --only-binary=:all: './opencv_bv_tools-0.10.0.dev6-cp312-cp312-linux_x86_64.whl[wheel]'
+python -m pip install --only-binary=:all: './opencv_bv_tools-0.10.0.dev7-cp312-cp312-linux_x86_64.whl[wheel]'
 opencv-bv-setup
 ```
 
@@ -115,7 +116,7 @@ The package has not been published to PyPI. For a prepared platform-specific
 wheel, replace the path below with its actual absolute filename (Python 3.12):
 
 ```bash
-python -m pip install '/absolute/path/to/opencv_bv_tools-0.10.0.dev6-PLATFORM.whl[wheel]'
+python -m pip install '/absolute/path/to/opencv_bv_tools-0.10.0.dev7-PLATFORM.whl[wheel]'
 opencv-bv-setup
 ```
 
@@ -124,9 +125,13 @@ command builds the package from source (Git, native build tools and internet
 access are required). This route has been tested on Linux x86-64:
 
 ```bash
-python -m pip install 'opencv-bv-tools[wheel] @ git+https://github.com/nitin-singh12/opencv.git@mcp-vision-tools#subdirectory=apps/mcp'
+python -m pip install 'opencv-bv-tools[wheel] @ git+https://github.com/nitin-singh12/opencv.git@mcp-source-install#subdirectory=apps/mcp'
 opencv-bv-setup
 ```
+
+This builds the MCP application and its native extensions from source; the
+`[wheel]` extra still installs the pinned OpenCV Python wheel. Building OpenCV
+itself from source is a separate option described above.
 
 On Windows use `py -3.12 -m pip` and the actual Windows wheel path. The setup
 command asks for Codex, Claude Code, or another local MCP client, then asks
@@ -320,7 +325,7 @@ python3.12 -m venv .venv-dev
 .venv-dev/bin/python -m pip install -c install-constraints.txt '.[all,wheel,test,png-test,scanner-test,barcode-test,qr-test,face-test]'
 .venv-dev/bin/python -m pytest tests
 .venv-dev/bin/python -m build --wheel
-.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev6-cp312-cp312-linux_x86_64.whl --source-commit "$(git rev-parse HEAD)" --unpublished
+.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev7-cp312-cp312-linux_x86_64.whl --source-commit "$(git rev-parse HEAD)" --unpublished
 ```
 
 The wheel path above is an example for Linux x86-64 and Python 3.12; use the

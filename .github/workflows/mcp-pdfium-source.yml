@@ -3,7 +3,7 @@ name: MCP PDFium source validation
 on:
   workflow_dispatch:
   push:
-    branches: [mcp-vision-tools]
+    branches: [mcp-vision-tools, mcp-prebuilt-wheels, mcp-source-install]
     paths:
       - '3rdparty/pdfium/**'
       - 'apps/mcp/native/pdfium-source*'

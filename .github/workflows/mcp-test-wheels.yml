@@ -3,7 +3,7 @@ name: Build experimental MCP wheels
 on:
   workflow_dispatch:
   push:
-    branches: [mcp-vision-tools]
+    branches: [mcp-vision-tools, mcp-prebuilt-wheels]
     paths: ['.github/workflows/mcp-test-wheels.yml']
 
 permissions:

@@ -14,7 +14,7 @@ spec.loader.exec_module(retain)
 def test_only_successful_matching_wheel_is_retained(tmp_path, monkeypatch):
     work = tmp_path / "work"
     (work / "dist").mkdir(parents=True)
-    wheel = work / "dist/opencv_bv_tools-0.10.0.dev6-test.whl"
+    wheel = work / "dist/opencv_bv_tools-0.10.0.dev7-test.whl"
     wheel.write_bytes(b"test wheel")
     digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
     report = {"status": "passed", "commit": "commit-one", "wheel_sha256": digest}
