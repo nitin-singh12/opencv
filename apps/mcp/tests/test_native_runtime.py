@@ -23,6 +23,40 @@ from opencv_bv_tools.runtime.worker_process import _run_worker
 WINDOWS = pytest.mark.skipif(sys.platform != "win32", reason="requires actual Windows APIs")
 
 
+@pytest.mark.parametrize("background", [(0, 0, 0), (255, 255, 255), (17, 127, 231)])
+@pytest.mark.parametrize("layout", ["normal", "transpose", "reverse"])
+def test_alpha_compositing_matches_full_precision_for_all_values(background, layout):
+    import numpy as np
+    from opencv_bv_tools.runtime.image_io import opaque
+
+    color = np.broadcast_to(np.arange(256, dtype=np.uint8)[None, :], (256, 256))
+    alpha = np.broadcast_to(np.arange(256, dtype=np.uint8)[:, None], (256, 256))
+    image = np.stack((color, 255 - color, color, alpha), axis=2)
+    if layout == "transpose":
+        image = image.transpose(1, 0, 2)
+    elif layout == "reverse":
+        image = image[::-1, ::-1]
+    wide_alpha = image[:, :, 3:4].astype(np.uint32)
+    wide_rgb = image[:, :, :3].astype(np.uint32)
+    expected = ((wide_rgb * wide_alpha + np.array(background, dtype=np.uint32) *
+                 (255 - wide_alpha) + 127) // 255).astype(np.uint8)
+    assert np.array_equal(opaque(image, background), expected)
+
+
+def test_alpha_compositing_matches_every_channel_alpha_and_background():
+    import numpy as np
+    from opencv_bv_tools.runtime.image_io import opaque
+
+    color = np.broadcast_to(np.arange(256, dtype=np.uint8)[None, :], (256, 256))
+    alpha = np.broadcast_to(np.arange(256, dtype=np.uint8)[:, None], (256, 256))
+    image = np.stack((color, color, color, alpha), axis=2)
+    wide_color = color.astype(np.uint32)
+    wide_alpha = alpha.astype(np.uint32)
+    for background in range(256):
+        expected = ((wide_color * wide_alpha + background * (255 - wide_alpha) + 127) // 255).astype(np.uint8)
+        assert np.array_equal(opaque(image, (background,) * 3)[:, :, 0], expected)
+
+
 @pytest.mark.parametrize("target,architecture,directory,suffix", [
     ("linux", "x86_64", "bin", ""), ("darwin", "arm64", "bin", ""),
     ("win32", "AMD64", "Scripts", ".exe"),

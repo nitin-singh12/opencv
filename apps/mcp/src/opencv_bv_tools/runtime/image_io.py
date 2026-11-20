@@ -307,10 +307,12 @@ def opaque(image, background=(255, 255, 255)):
 
     if image.shape[2] == 3:
         return image
-    alpha = image[:, :, 3:4].astype(np.uint32)
-    rgb = image[:, :, :3].astype(np.uint32)
+    # For 8-bit inputs the weighted sum is at most 255*255 + 127,
+    # so uint16 is exact and uses half the temporary memory of uint32.
+    alpha = image[:, :, 3:4].astype(np.uint16)
+    rgb = image[:, :, :3].astype(np.uint16)
     return (
-        (rgb * alpha + np.array(background, dtype=np.uint32) * (255 - alpha) + 127)
+        (rgb * alpha + np.array(background, dtype=np.uint16) * (255 - alpha) + 127)
         // 255
     ).astype(np.uint8)
 
