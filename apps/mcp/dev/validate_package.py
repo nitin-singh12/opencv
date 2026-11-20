@@ -172,25 +172,25 @@ def validate(work, prepare_only=False, unpublished=False, feature_tests=False):
                 # Install independent test oracles only after checking the runtime environment.
                 run([installed, "-m", "pip", "install", "pypdfium2==5.14.0", "pypdf==6.10.0",
                      "pypng==0.20220715.0", "python-barcode==0.16.1", "segno==1.6.6", "qrcode==8.2"], cwd=work)
+                run([installed, "-c", "import segno, qrcode"], cwd=work)
             shutil.copytree(ROOT / "tests", extracted / "tests", dirs_exist_ok=True)
             shutil.copyfile(ROOT / "scripts/build_mcp_zip.py", extracted / "scripts/build_mcp_zip.py")
             shutil.copyfile(ROOT / "dev/validate_package.py", extracted / "dev/validate_package.py")
             shutil.copyfile(ROOT / "pyproject.toml", extracted / "pyproject.toml")
+            shutil.copyfile(ROOT / "setup.py", extracted / "setup.py")
             (extracted / "dist").mkdir()
             shutil.copyfile(wheel, extracted / "dist" / wheel.name)
-            test_targets = ["tests/test_install_mcp.py", "tests/test_client_setup.py",
+            test_targets = ["tests/test_install_mcp.py", "tests/test_client_setup.py", "tests/test_native_wheel_tags.py",
                  "tests/test_native_runtime.py", "tests/test_ocr_process.py", "tests/test_ocr_opencv.py",
                  "tests/test_ocr_model_loading.py",
                  "tests/test_unified_protocol.py",
                  "tests/test_face_blurring.py"]
             if feature_tests:
-                # The QR tool is covered by the nine-tool smoke test; its full
-                # parametrized suite currently crashes in pytest on Linux.
                 test_targets += ["tests/test_conversion.py", "tests/test_independent_conversion.py", "tests/test_files_cli.py",
                                  "tests/test_barcode_reader.py", "tests/test_document_scanner.py",
                                  "tests/test_png_compression.py", "tests/test_pdf_mcp.py",
                                  "tests/test_pdfium_native.py", "tests/test_integration_regressions.py",
-                                 "tests/test_mcp_conversion.py"]
+                                 "tests/test_mcp_conversion.py", "tests/test_qr_reader.py"]
             run([installed, "-m", "pytest", "-q", "-ra", *test_targets, "--junitxml", work / "tests.xml"], cwd=extracted, timeout=900)
             report["native_contracts"] = ("selected tests plus feature regressions" if feature_tests else "selected tests") + "; passed; consult pytest log for skips"
         report["status"] = "passed"
