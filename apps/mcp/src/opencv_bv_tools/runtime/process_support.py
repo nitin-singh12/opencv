@@ -24,6 +24,18 @@ def peak_rss_kib():
     if sys.platform == "win32":
         from .windows_process import peak_rss_kib as windows_peak
         return windows_peak()
+    if sys.platform == "linux":
+        # getrusage's high-water mark can include the parent's memory at
+        # fork, even after exec. VmHWM measures this process image instead.
+        try:
+            with open("/proc/self/status", encoding="ascii") as status:
+                for line in status:
+                    if line.startswith("VmHWM:"):
+                        fields = line.split()
+                        if len(fields) == 3 and fields[2] == "kB":
+                            return int(fields[1])
+        except (OSError, ValueError):
+            pass  # On systems without procfs, retain the conservative fallback.
     import resource
     value = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return int(value / 1024) if sys.platform == "darwin" else int(value)

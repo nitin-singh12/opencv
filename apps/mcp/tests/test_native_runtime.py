@@ -217,6 +217,34 @@ print(json.dumps([peak_rss_kib()*1024, psutil.Process().memory_info().rss]))
     assert current * 0.8 <= peak <= max(parent_rss, current) * 16
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux procfs high-water mark")
+def test_linux_worker_peak_excludes_parent_memory():
+    parent_data = bytearray(128 * 1024 * 1024)
+    code = """
+import json
+from opencv_bv_tools.runtime.process_support import peak_rss_kib
+data = bytearray(32 * 1024 * 1024)
+del data
+reported = peak_rss_kib()
+with open('/proc/self/status', encoding='ascii') as status:
+    fields = {line.split(':', 1)[0]: line.split(':', 1)[1].split()[0]
+              for line in status if line.startswith(('VmHWM:', 'VmRSS:'))}
+print(json.dumps([reported, int(fields['VmHWM']), int(fields['VmRSS'])]))
+"""
+    process = start_worker([sys.executable, "-c", code], stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE)
+    try:
+        stdout, stderr = process.communicate(timeout=20)
+    finally:
+        if process.poll() is None:
+            stop_worker(process)
+    assert process.returncode == 0, stderr.decode(errors="replace")
+    reported, high_water, current = json.loads(stdout)
+    assert len(parent_data) == 128 * 1024 * 1024
+    assert abs(reported - high_water) < 8192
+    assert reported >= current + 16 * 1024
+
+
 def test_new_output_and_cancelled_publication(tmp_path):
     folder = tmp_path / "images with spaces café"
     folder.mkdir()
