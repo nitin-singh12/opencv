@@ -63,8 +63,12 @@ is `libpdfium.so` in the configured GN build directory. It is not installed or
 linked into OpenCV. To select the Linux source-built binary when building an
 MCP wheel, set `OPENCV_MCP_PDFIUM_SOURCE_LIBRARY` to its absolute path. The
 wheel build accepts only the specific tested SHA-256 in the source manifest;
-different builds fail closed. For example, with the wheel build requirements
-already installed:
+different builds fail closed. For that checksum, use the directory layout shown above:
+the prepared checkout must be named `pdfium`, and the GN build directory must
+be its sibling. PDFium embeds relative source paths, so another layout can
+produce a different binary even with the same source and tools.
+
+With the wheel build requirements already installed:
 
 ```bash
 cd apps/mcp

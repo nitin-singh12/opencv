@@ -38,25 +38,16 @@ jobs:
         run: bash 3rdparty/pdfium/prepare-linux.sh "$RUNNER_TEMP/pdfium-work"
       - name: Build PDFium through OpenCV CMake
         run: |
-          cmake -S . -B "$RUNNER_TEMP/opencv-pdfium" -DBUILD_LIST=core -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_MCP_PDFIUM=ON -DMCP_PDFIUM_SOURCE_DIR="$RUNNER_TEMP/pdfium-work/pdfium"
+          cmake -S . -B "$RUNNER_TEMP/opencv-pdfium" -DBUILD_LIST=core -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_MCP_PDFIUM=ON -DMCP_PDFIUM_SOURCE_DIR="$RUNNER_TEMP/pdfium-work/pdfium" -DMCP_PDFIUM_GN_BUILD_DIR="$RUNNER_TEMP/pdfium-work/pdfium-build"
           cmake --build "$RUNNER_TEMP/opencv-pdfium" --target opencv_mcp_pdfium
       - name: Build and verify source-built wheel
         working-directory: apps/mcp
         env:
-          OPENCV_MCP_PDFIUM_SOURCE_LIBRARY: ${{ runner.temp }}/opencv-pdfium/3rdparty/pdfium-gn/libpdfium.so
+          OPENCV_MCP_PDFIUM_SOURCE_LIBRARY: ${{ runner.temp }}/pdfium-work/pdfium-build/libpdfium.so
         run: |
           test -f "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY"
           sha256sum "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY"
           readelf -n "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY" | head -n 20
-          cp "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY" "$RUNNER_TEMP/pdfium-diagnostic.so"
-          for section in .text .rodata .data .dynstr .dynsym; do
-            objcopy --dump-section "$section=$RUNNER_TEMP/pdfium-${section#.}" "$RUNNER_TEMP/pdfium-diagnostic.so"
-            sha256sum "$RUNNER_TEMP/pdfium-${section#.}"
-          done
-          if [ "$(sha256sum "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY" | cut -d' ' -f1)" != '2921cd65e4cace07d21b14a8a026bdeec506ccea95d4fcae3dd830f66a661601' ]; then
-            gzip -n -c "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY" | base64 -w 6000 | sed 's/^/PDFIUM_COMPARE:/'
-            printf '\n'
-          fi
           python -m pip install 'build==1.6.1' 'setuptools==84.2.1' 'wheel==0.45.1' 'nanobind==2.11.0' 'cmake>=3.21,<4'
           python -m build --wheel --no-isolation --outdir "$RUNNER_TEMP/pdfium-wheel"
           python dev/verify_source_pdfium_wheel.py "$RUNNER_TEMP"/pdfium-wheel/*.whl

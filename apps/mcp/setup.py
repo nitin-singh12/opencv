@@ -154,7 +154,7 @@ class NativeBuild(build_ext):
         build_dir = Path(self.build_temp).resolve() / "zxing"
         build_dir.mkdir(parents=True, exist_ok=True)
         config = "Debug" if self.debug else "Release"
-        subprocess.run([
+        cmake_args = [
             "cmake", "-S", str(root / "native"), "-B", str(build_dir),
             f"-DZXING_SOURCE_DIR={zxing_staged}",
             f"-DCMAKE_BUILD_TYPE={config}", "-DCMAKE_CXX_STANDARD=20",
@@ -162,7 +162,15 @@ class NativeBuild(build_ext):
             "-DZXING_READERS=ON", "-DZXING_WRITERS=OFF", "-DZXING_C_API=OFF",
             "-DZXING_EXAMPLES=OFF", "-DZXING_DEPENDENCIES=LOCAL",
             f"-Dnanobind_DIR={nanobind.cmake_dir()}", f"-DPython_EXECUTABLE={sys.executable}",
-        ], check=True)
+        ]
+        if sys.platform == "darwin":
+            wheel = self.distribution.get_command_obj("bdist_wheel")
+            wheel.ensure_finalized()
+            match = re.fullmatch(r"macosx_(\d+)_(\d+)_arm64", wheel.get_tag()[2])
+            if not match:
+                raise RuntimeError("Unsupported macOS wheel platform")
+            cmake_args.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={match.group(1)}.{match.group(2)}")
+        subprocess.run(cmake_args, check=True)
         subprocess.run(["cmake", "--build", str(build_dir), "--config", config,
                         "--target", "zxingcpp", "--parallel", "4"], check=True)
         candidates = [p for p in (build_dir / "bindings").rglob("zxingcpp*")

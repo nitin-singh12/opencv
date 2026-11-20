@@ -2,6 +2,8 @@
 import ast
 from pathlib import Path
 import re
+import shutil
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -89,3 +91,29 @@ def test_macos_native_binary_minimum_must_fit_wheel(tmp_path, output, accepted):
     else:
         with pytest.raises(RuntimeError, match='deployment version'):
             build.verify_macos_binaries()
+
+
+def test_macos_zxing_uses_wheel_deployment_target(tmp_path, monkeypatch):
+    path = Path(__file__).resolve().parents[1] / 'setup.py'
+    tree = ast.parse(path.read_text())
+    node = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'NativeBuild')
+    commands = []
+    monkeypatch.setitem(sys.modules, 'nanobind', SimpleNamespace(cmake_dir=lambda: '/nanobind'))
+    namespace = {'build_ext': object, 'Path': Path, 'root': tmp_path, 're': re,
+                 'zxing_staged': tmp_path / 'zxing', 'shutil': shutil,
+                 'sys': SimpleNamespace(platform='darwin', executable='/python'),
+                 'subprocess': SimpleNamespace(run=lambda args, check: commands.append(args))}
+    exec(compile(ast.Module(body=[node], type_ignores=[]), str(path), 'exec'), namespace)
+    wheel = SimpleNamespace(ensure_finalized=lambda: None,
+                            get_tag=lambda: ('cp312', 'cp312', 'macosx_13_0_arm64'))
+    build = namespace['NativeBuild']()
+    build.distribution = SimpleNamespace(get_command_obj=lambda name: wheel)
+    build.build_temp = str(tmp_path / 'build')
+    build.debug = False
+    build.get_ext_fullpath = lambda name: str(tmp_path / 'output/zxingcpp.so')
+    binding = tmp_path / 'build/zxing/bindings/zxingcpp.so'
+    binding.parent.mkdir(parents=True)
+    binding.write_bytes(b'example')
+    build.build_extension(SimpleNamespace(name='opencv_bv_tools._native.zxingcpp'))
+    assert '-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0' in commands[0]
+    assert (tmp_path / 'output/zxingcpp.so').read_bytes() == b'example'
