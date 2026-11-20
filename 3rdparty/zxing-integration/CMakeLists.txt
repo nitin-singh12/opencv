@@ -1,0 +1,10 @@
+# Keep ZXing settings scoped to this opt-in third-party directory.
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(BUILD_SHARED_LIBS OFF)
+set(ZXING_READERS ON)
+set(ZXING_WRITERS OFF)
+set(ZXING_C_API OFF)
+set(ZXING_EXAMPLES OFF)
+set(ZXING_PYTHON_MODULE OFF)
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../zxing/core" "${CMAKE_CURRENT_BINARY_DIR}/zxing" EXCLUDE_FROM_ALL)

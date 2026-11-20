@@ -1,14 +1,12 @@
 # Third-party notices
 
-This index describes dependencies and bundled assets for `0.10.0.dev3`. The
+This index describes dependencies and bundled assets for `0.10.0.dev6`. The
 application uses Apache-2.0; see [LICENSING.md](LICENSING.md). Preserve
 the full notices in each installed distribution, including native components.
 Headline licence names alone are not a complete redistribution review.
 
-Only the application and modified RapidOCR wheels are included in the installer
-ZIP. The other runtime packages below are downloaded separately during
-installation. Their appearance in this dependency index does not mean their
-binaries are inside our ZIP; see [distribution contents](LICENSING.md#what-this-distribution-contains).
+The installer ZIP includes the application wheel and may also include runtime
+dependency wheels. Each included wheel keeps its own licence notices.
 
 ## Runtime dependencies
 
@@ -17,10 +15,11 @@ binaries are inside our ZIP; see [distribution contents](LICENSING.md#what-this-
 | OpenCV headless 5.0.0.93 | OpenCV core Apache-2.0; Python wrapper/build scripts MIT; additional native component terms apply. Preserve `cv2/LICENSE.txt` and `cv2/LICENSE-3RD-PARTY.txt`. [Upstream licensing](https://github.com/opencv/opencv-python#licensing). |
 | NumPy 2.2.6 | BSD-3-Clause plus included native-library notices. Preserve the distribution's `LICENSE.txt`. [Source](https://github.com/numpy/numpy). |
 | MCP 2.3.0 | MIT. Preserve the distribution licence and notices of transitive packages. [Source](https://github.com/modelcontextprotocol/python-sdk). |
-| zxing-cpp 3.1.1 | Apache-2.0. Preserve the wheel's licence. [Source](https://github.com/zxing-cpp/zxing-cpp). |
-| pyoxipng 9.1.1 | MIT. Preserve the wheel's licence. [Source](https://github.com/nfrasser/pyoxipng). |
-| RapidOCR 3.10.0+bv.3 | Apache-2.0 code; separate `MODEL_LICENSES.md` contains weight and conversion attribution. This is a modified wheel, not an official RapidOCR release. [Upstream source](https://github.com/RapidAI/RapidOCR). |
-| pypdfium2 5.14.0 | BSD-3-Clause / Apache-2.0 components, plus PDFium and bundled third-party notices. Preserve the full wheel `LICENSES` and build-specific notice directories. [Licensing](https://pypdfium2.readthedocs.io/en/stable/readme.html#licensing). |
+| zxing-cpp 3.1.1 | Apache-2.0. The decoder is built into the application wheel; preserve [the licence](docs/licenses/zxing-apache-license.txt). [Source](https://github.com/zxing-cpp/zxing-cpp). |
+| nanobind 2.11.0 | BSD-3-Clause. The binding code is compiled into the ZXing extension; preserve [the licence](docs/licenses/nanobind-bsd-license.txt). |
+| robin-map | MIT. Headers used by nanobind; preserve [the licence](docs/licenses/robin-map-mit-license.txt). |
+| Clipper 6.4.2 | Boost Software License 1.0. The included C++ source is from pyclipper 1.4.0; preserve [the Clipper license](docs/licenses/clipper-boost-license.txt). [Source](https://github.com/fonttools/pyclipper). |
+| PDFium 156.0.8076.0 | The default build uses the native library from the `pypdfium2==5.14.0` build distribution. The experimental Linux source build uses the pinned PDFium checkout and includes additional notices for HarfBuzz, Dragonbox, libc++ and libc++abi. Preserve all notices packaged under `opencv_bv_tools/_native/pdfium_notices`. [Default binary licensing](https://pypdfium2.readthedocs.io/en/stable/readme.html#licensing). |
 
 This is the direct-dependency list. Transitive and native components have their
 own terms; examples include LGPL material in FFmpeg and MPL material in
@@ -73,24 +72,15 @@ FlatBuffers a direct dependency of this version.
   the smoke PDF. Barcode regression PNGs were generated with bwip-js/BWIPP;
   externally sourced fixture attribution remains in the fixture records.
 
-## Modified RapidOCR companion
+## Adapted OCR code and models
 
-The ZIP contains `rapidocr-3.10.0+bv.3-py3-none-any.whl`, built from the upstream
-3.10.0 wheel with SHA-256
-`2fc34e26cd0f48514804a94f8832283039c7334076bff60768b1fed9ad068050`.
-The builder retains the full licence, `MODEL_LICENSES.md`, model bytes and all
-other package data. All eight changed Python files carry a modification notice,
-and `BV-MODIFICATIONS.txt` identifies the changes. The patch
-and builder are included so the companion can be reproduced.
-
-The image-loading, visualization and download helpers defer Pillow/requests
-imports. The companion also accepts a per-instance inference-session factory,
-which this application uses to supply OpenCV DNN CPU sessions. Without that
-factory, upstream inference-session behavior is retained. OCR preprocessing and
-model files are unchanged. The detector box-expansion calculation uses
-independently implemented scalar geometry in place of Shapely.
-The companion's optional `images` and `downloads` extras restore those helpers.
-No model is fetched during normal MCP tool processing.
+The OCR preprocessing, detector postprocessing and recognition decoding in
+`opencv_bv_tools/runtime/ocr_native.py` include modified code from
+RapidOCR 3.10.0 and PaddleOCR. Their Apache-2.0 terms, original attribution and
+modification notice are retained in that file and this package's licence.
+The two PP-OCRv6 model files are distributed inside the application wheel. Their
+original [model notice](docs/licenses/RAPIDOCR-MODEL-NOTICES.txt), provenance
+and hashes are included. The runtime no longer installs the RapidOCR package.
 
 ## Optional and development packages
 

@@ -39,6 +39,12 @@
 *.sty          text
 *.tex          text
 *.txt          text
+
+# Keep the verified upstream Clipper source and licence bytes unchanged.
+3rdparty/clipper/clipper.cpp -text
+3rdparty/clipper/clipper.hpp -text
+3rdparty/clipper/LICENSE.txt -text
+3rdparty/zxing/** -text
 *.xaml         text
 
 # reST underlines/overlines can look like conflict markers

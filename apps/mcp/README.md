@@ -4,14 +4,22 @@ An experimental Python application in a personal OpenCV fork. One local MCP
 server exposes nine tools, with separate modules for each feature. This application
 uses a pinned `opencv-python-headless` wheel by default. An additional validation
 job builds OpenCV from this checkout and tests the application against that build.
-No OpenCV CMake files are changed. This is not an official
-OpenCV release or an accepted upstream contribution.
+The OpenCV build includes optional, disabled-by-default native targets for the
+bundled dependencies. This is not an official OpenCV release or an accepted
+upstream contribution.
 
-**Status:** experimental version `0.10.0.dev3` on `mcp-vision-tools`.
+**Status:** experimental version `0.10.0.dev6` on `mcp-vision-tools`.
+The RapidOCR-free and bundled PDFium implementations are under evaluation. On Linux, an earlier prototype
+matched the previous implementation on 280 images and 49 PDFs (91 pages),
+including redacted output pixels. The integrated branch wheel also matched on
+a sample of nine images and three PDFs; its full Linux suite passed 1,461 tests
+with 26 Windows-only skips. The newer PDFium binding has been compared against
+91 real PDF pages and three end-to-end redaction samples on Linux. Windows/macOS
+validation of these changes remains pending. Do not treat this as a release.
 Email OCR uses OpenCV DNN on CPU. The preceding `0.10.0.dev2` Linux ZIP passed all
 nine MCP tools, and the full application suite passed 1,439 tests with 26
-Windows-only skips. On Linux, the Shapely-free candidate matched the previous
-version on all 280 original image cases and 49 original PDF cases. Native
+Windows-only skips. On Linux, the previous Shapely-free candidate matched its predecessor
+on all 280 original image cases and 49 original PDF cases. Native
 platform results are tracked in the
 [validation notes](docs/lightweight-branch.md#native-and-source-validation).
 Application code uses Apache-2.0; bundled models and dependencies retain their
@@ -41,34 +49,65 @@ Image conversion and document creation are not privacy filters. Face blur and
 email redaction are detection tools, not guarantees that all sensitive content
 has been removed.
 
+## Choosing an OpenCV installation
+
+The base package includes the MCP library, so the server can start and list its
+tools. Image operations also need OpenCV. The installer selects the `wheel`
+extra automatically; manual wheel users can install `opencv-bv-tools[all,wheel]`. The `all` extra selects the feature
+dependencies; it does not select an OpenCV provider.
+
+To use OpenCV built from source instead, install its Python `cv2` module in the
+same environment and install `opencv-bv-tools[all]`.
+Set `OPENCV_BV_SOURCE_BUILD` to the absolute installation prefix for the face
+worker. Source builds must be validated for the target platform; the Linux
+source-build smoke check is described in the validation notes.
+
+For example, after installing source-built `cv2` in an active Python environment, run from
+`apps/mcp` on Linux or macOS:
+
+```bash
+python -m pip install -c install-constraints.txt '.[all]'
+export OPENCV_BV_SOURCE_BUILD=/absolute/path/to/opencv/install-prefix
+python -m pip check
+```
+
+On Windows PowerShell, use the same `python -m pip install` command and set
+`$env:OPENCV_BV_SOURCE_BUILD = 'C:\absolute\path\to\opencv\install-prefix'`.
+Keep this environment variable when launching the MCP server. Source builds on
+Windows and macOS have not yet been validated with this packaging change.
+
+After extracting a prepared ZIP, users who prefer pip can install the local
+application wheel and resolve the other dependencies from their configured index:
+
+```bash
+python -m pip install -c install-constraints.txt --find-links wheels 'opencv-bv-tools[all,wheel]==0.10.0.dev6'
+```
+
+Use Python 3.12 in an isolated environment. This command installs the package;
+the provided installer additionally runs the nine-tool smoke check and can
+prepare client connection settings.
+
 ## Install from source
 
 Use **Python 3.12**. Earlier native validation covered Linux x86-64, Windows x64
 and macOS arm64. Those results predate the OpenCV DNN OCR backend and do not
-establish acceptance of `0.10.0.dev3`. See the
+establish acceptance of `0.10.0.dev6`. See the
 [validation results](docs/lightweight-branch.md#native-and-source-validation)
 for historical coverage and the new backend's pending checks.
 
-The native validation workflow builds and installs this exact branch on Linux
-x86-64, Windows x64 and Apple Silicon macOS with Python 3.12. Its Linux source
-job additionally compiles OpenCV from this checkout and tests MCP against that
-build. Consult the workflow's individual job results; a wheel build alone does
-not establish native runtime or source-build compatibility.
+The native validation workflow is configured to build and test Linux x86-64,
+Windows x64 and Apple Silicon macOS with Python 3.12. Its Linux source job also
+compiles OpenCV. These jobs have not yet validated the current PDFium changes;
+consult individual job results before claiming platform support.
 
-From the repository root, enter `apps/mcp`. First build the required RapidOCR
-companion wheel, `rapidocr==3.10.0+bv.3`. It makes Pillow and HTTP helpers optional
-and allows this application to supply an inference-session factory per OCR
-instance. Model bytes and OCR preprocessing are unchanged. The OCR box-expansion
-calculation uses local scalar geometry instead of Shapely. Without a factory,
-the companion retains upstream inference-session behavior. The builder checks
-the upstream wheel's SHA-256.
+From the repository root, enter `apps/mcp`. The two verified OCR model files
+and recognition dictionary are included in the application wheel. The server
+uses OpenCV DNN for CPU inference and does not require RapidOCR.
 
 Linux/macOS shell:
 
 ```bash
 cd apps/mcp
-python3.12 -m pip download --no-deps --only-binary=:all: rapidocr==3.10.0 -d .upstream
-python3.12 scripts/build_rapidocr.py .upstream/rapidocr-3.10.0-py3-none-any.whl
 PYTHON=python3.12 bash install.sh --install-only
 ```
 
@@ -76,15 +115,12 @@ Windows PowerShell:
 
 ```powershell
 cd apps/mcp
-py -3.12 -m pip download --no-deps --only-binary=:all: rapidocr==3.10.0 -d .upstream
-py -3.12 scripts/build_rapidocr.py .upstream/rapidocr-3.10.0-py3-none-any.whl
 py -3.12 scripts/install_mcp.py --install-only
 ```
 
-`--no-deps` above only downloads the upstream wheel. The installer resolves and
-checks all runtime dependencies normally; do not bypass dependency installation.
-Internet access is needed to obtain dependencies. Processing runs locally on CPU;
-no GPU or hosted service is required.
+The installer resolves and checks runtime dependencies normally. Internet access
+is needed to obtain dependencies. Processing runs locally on CPU; no GPU or
+hosted service is required.
 
 The installer creates an isolated environment and calls all nine tools through
 MCP with included fixtures. A successful run ends with:
@@ -99,10 +135,12 @@ not register a client or generate connection settings.
 
 ## Install a prepared ZIP
 
-The ZIP contains the application wheel, the companion RapidOCR wheel, notices,
-installer and smoke fixtures. It is not an offline bundle of all dependencies.
+The ZIP contains the application wheel, OCR models, notices, installer and smoke fixtures. A ZIP may also include additional dependency wheels; it is only fully offline if it includes every required wheel for the target platform.
+The application wheel contains compiled Clipper and ZXing extensions and a PDFium native library and is specific to
+the Python version, operating system and CPU architecture shown in its wheel
+filename. Use a ZIP built for the target platform.
 Verify the supplied SHA-256, extract it, then run the installer from
-`opencv-bv-server-mcp`. No companion-wheel build is needed in the extracted ZIP.
+`opencv-bv-server-mcp`.
 
 Linux:
 
@@ -189,14 +227,13 @@ On Windows use the installed Python path printed by the installer, followed by
 | --- | --- |
 | `opencv-python-headless==5.0.0.93`, `numpy==2.2.6` | Shared image processing, face detection and CPU OCR inference |
 | `mcp==2.3.0` | MCP protocol |
-| `zxing-cpp==3.1.1` | QR and barcode decoding |
-| `pyoxipng==9.1.1` | Lossless PNG optimization |
-| `rapidocr==3.10.0+bv.3` | OCR preprocessing, detection/recognition orchestration and postprocessing |
-| `pypdfium2==5.14.0` | PDF reading/rendering for PDF redaction |
+| Bundled ZXing-C++ 3.1.1 | QR and barcode decoding; compiled into the application wheel |
+| Bundled PDFium 156.0.8076.0 | PDF reading/rendering for PDF redaction |
 
-The default installer selects `all`. These are direct dependencies; they also
-install their own dependencies. Default runtime does not require Pillow,
-ReportLab, requests, charset-normalizer, Shapely, the Python `onnxruntime` package or a
+The default installer selects `all,wheel`. MCP and NumPy are Python package dependencies and may install their own dependencies. ZXing and PDFium are included as native code; their separate Python distributions are not required at runtime. The default wheel build obtains the pinned PDFium binary and notices from `pypdfium2==5.14.0`. An experimental Linux source-built PDFium route, which does not require `pypdfium2` to build, is documented in the repository's `3rdparty/pdfium/README.md`. PNG compression uses Python's built-in zlib.
+OCR text-box expansion uses the bundled Clipper 6.4.2 native extension.
+Default runtime does not require pypdfium2, Pillow, pyoxipng, pyclipper,
+ReportLab, requests, charset-normalizer, RapidOCR, Shapely, the Python `onnxruntime` package or a
 separate Python `onnx` parser. OpenCV DNN loads the bundled ONNX models directly.
 The supported OCR configuration is CPU-only PP-OCRv6 small detection and
 recognition, using the unchanged RapidOCR model bytes. The recognition dictionary
@@ -220,19 +257,21 @@ tools there; `runtime/` contains shared file checks, image I/O and process worke
 `scripts/` contains installation and packaging helpers. `tests/` is development
 material, not loaded by the server.
 
-From `apps/mcp`, after building the companion wheel, use an isolated development
+From `apps/mcp`, use an isolated development
 environment:
 
 ```bash
 python3.12 -m venv .venv-dev
-.venv-dev/bin/python -m pip install -c install-constraints.txt '.[all,test,png-test,scanner-test,barcode-test,qr-test,face-test]' wheels/rapidocr-3.10.0+bv.3-py3-none-any.whl
+.venv-dev/bin/python -m pip install -c install-constraints.txt '.[all,wheel,test,png-test,scanner-test,barcode-test,qr-test,face-test]'
 .venv-dev/bin/python -m pytest tests
 .venv-dev/bin/python -m build --wheel
-.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev3-py3-none-any.whl --source-commit "$(git rev-parse HEAD)" --unpublished
+.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev6-cp312-cp312-linux_x86_64.whl --source-commit "$(git rev-parse HEAD)" --unpublished
 ```
 
-On Windows use `.venv-dev\Scripts\python.exe` and obtain the SHA with
-`git rev-parse HEAD`. Test-only libraries include independent image/PDF oracles;
+The wheel path above is an example for Linux x86-64 and Python 3.12; use the
+filename produced by the build on your platform. On Windows use
+`.venv-dev\Scripts\python.exe` and obtain the SHA with `git rev-parse HEAD`.
+Test-only libraries include independent image/PDF oracles;
 they are not default runtime requirements. `--unpublished` identifies a local
 working-tree build. A release must use a reviewed commit and its exact artifacts.
 

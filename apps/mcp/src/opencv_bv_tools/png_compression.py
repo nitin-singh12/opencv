@@ -190,7 +190,7 @@ def register_tools(server, context):
         Existing output requires overwrite=true; input is never overwritten.
         """
         with context.call():
-            context.require("png", "oxipng")
+            context.require("png", "cv2", "numpy")
             limits = PNGLimits(
                 timeout_seconds=timeout_seconds,
                 max_pixels=min(context.max_pixels, 8_000_000),

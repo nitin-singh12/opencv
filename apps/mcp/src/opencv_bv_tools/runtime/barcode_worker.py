@@ -4,7 +4,7 @@
 """Private JSON/stdin protocol. Image parsing and native decoding stay here."""
 
 import base64
-from importlib.metadata import version
+from opencv_bv_tools._native import ZXING_VERSION, load_zxing
 import json
 from .process_support import peak_rss_kib
 import sys
@@ -42,11 +42,9 @@ def decode(data, options):
         return _failure("invalid_or_unsupported_image")
     normalized = time.monotonic()
     try:
-        import zxingcpp
+        zxingcpp = load_zxing()
     except ImportError:
         return _failure("missing_barcode_dependency")
-    if version("zxing-cpp") != "3.1.1":
-        return _failure("unsupported_decoder_version")
     try:
         found = []
         backend_limited = False
@@ -72,7 +70,7 @@ def decode(data, options):
         coordinate_space="exif_normalized_image", coordinate_origin="top_left",
         polygon_order="backend top_left, top_right, bottom_right, bottom_left",
         symbols=[], undecoded=[], warnings=notes,
-        backend={"name": "zxing-cpp", "version": version("zxing-cpp"),
+        backend={"name": "zxing-cpp", "version": ZXING_VERSION,
                  "pass": "native_multicode_visible_and_inverted", "format_filter": options["formats"], "ean_add_on_symbol": "Ignore",
                  "try_rotate": True, "try_downscale": True, "try_invert": False,
                  "explicit_polarities": ["visible", "inverted"], "itf_lengths": itf_lengths},

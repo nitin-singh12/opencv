@@ -31,7 +31,7 @@ import tempfile
 
 packages = ["opencv-bv-tools", "Pillow", "mcp", "zxing-cpp", "pyoxipng",
             "reportlab", "requests", "charset-normalizer", "opencv-python-headless", "numpy",
-            "rapidocr", "onnxruntime", "onnxruntime-gpu", "Shapely", "pypdfium2", "segno"]
+            "rapidocr", "pyclipper", "onnxruntime", "onnxruntime-gpu", "Shapely", "pypdfium2", "segno"]
 versions = {}
 for name in packages:
     try:
@@ -63,14 +63,26 @@ try:
                 "blur_faces", "scan_document", "find_emails", "redact_emails", "redact_pdf"}
     heavy = sorted(set(sys.modules) & {"cv2", "numpy", "rapidocr", "onnxruntime", "shapely", "pypdfium2", "pymupdf"})
     result.update(tools=names, heavy_imports=heavy)
-    optional = {"Pillow", "reportlab", "requests", "charset-normalizer", "segno", "onnxruntime", "onnxruntime-gpu", "Shapely"}
+    optional = {"pypdfium2", "zxing-cpp", "Pillow", "pyoxipng", "pyclipper", "reportlab", "requests", "charset-normalizer", "segno", "rapidocr", "onnxruntime", "onnxruntime-gpu", "Shapely"}
     missing = [name for name, version in versions.items() if version is None and name not in optional]
     result["missing_runtime_dependencies"] = missing
+    result["rapidocr_absent"] = (versions["rapidocr"] is None and importlib.util.find_spec("rapidocr") is None)
     result["onnxruntime_absent"] = (versions["onnxruntime"] is None and versions["onnxruntime-gpu"] is None
                                     and importlib.util.find_spec("onnxruntime") is None)
     result["shapely_absent"] = (versions["Shapely"] is None and importlib.util.find_spec("shapely") is None)
+    result["pyclipper_absent"] = (versions["pyclipper"] is None and importlib.util.find_spec("pyclipper") is None)
+    result["pypdfium2_absent"] = (versions["pypdfium2"] is None
+                                    and importlib.util.find_spec("pypdfium2") is None
+                                    and importlib.util.find_spec("pypdfium2_raw") is None)
+    result["pdfium_binding_present"] = importlib.util.find_spec("opencv_bv_tools.runtime.pdfium_native") is not None
+    result["zxing_distribution_absent"] = (versions["zxing-cpp"] is None and importlib.util.find_spec("zxingcpp") is None)
+    result["zxing_extension_present"] = importlib.util.find_spec("opencv_bv_tools._native.zxingcpp") is not None
+    result["clipper_extension_present"] = importlib.util.find_spec("opencv_bv_tools._clipper_native") is not None
     result["status"] = ("registration_only_passed" if set(names) == expected and not heavy and not missing
-                        and result["onnxruntime_absent"] and result["shapely_absent"] else "blocked")
+                        and result["rapidocr_absent"] and result["onnxruntime_absent"] and result["shapely_absent"]
+                        and result["pyclipper_absent"] and result["clipper_extension_present"]
+                        and result["zxing_distribution_absent"] and result["zxing_extension_present"]
+                        and result["pypdfium2_absent"] and result["pdfium_binding_present"] else "blocked")
 except Exception as error:
     result.update(status="blocked", startup_error={"type": type(error).__name__, "message": str(error)})
 print(json.dumps(result, ensure_ascii=True, allow_nan=False))

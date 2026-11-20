@@ -20,8 +20,6 @@ FILES = {
     'PROVENANCE.json': 'PROVENANCE.json',
     'THIRD_PARTY_NOTICES.md': 'THIRD_PARTY_NOTICES.md',
     'install-constraints.txt': 'install-constraints.txt',
-    'scripts/build_rapidocr.py': 'scripts/build_rapidocr.py',
-    'scripts/rapidocr-array.patch': 'scripts/rapidocr-array.patch',
     'scripts/install_mcp.py': 'scripts/install_mcp.py',
     'scripts/smoke_mcp.py': 'scripts/smoke_mcp.py',
     'dev/check_platform.py': 'dev/check_platform.py',
@@ -38,6 +36,11 @@ FILES = {
     'docs/licenses/YUNET-LICENSE.txt': 'docs/licenses/YUNET-LICENSE.txt',
     'docs/licenses/RAPIDOCR-MODEL-NOTICES.txt': 'docs/licenses/RAPIDOCR-MODEL-NOTICES.txt',
     'docs/licenses/FLATBUFFERS-LICENSE.txt': 'docs/licenses/FLATBUFFERS-LICENSE.txt',
+    'docs/licenses/PDFIUM-BUNDLED-TERMS.txt': 'docs/licenses/PDFIUM-BUNDLED-TERMS.txt',
+    'docs/licenses/zxing-apache-license.txt': 'docs/licenses/zxing-apache-license.txt',
+    'docs/licenses/nanobind-bsd-license.txt': 'docs/licenses/nanobind-bsd-license.txt',
+    'docs/licenses/robin-map-mit-license.txt': 'docs/licenses/robin-map-mit-license.txt',
+    'docs/licenses/clipper-boost-license.txt': 'docs/licenses/clipper-boost-license.txt',
     'docs/lightweight-branch.md': 'docs/lightweight-branch.md',
 }
 
@@ -66,7 +69,7 @@ def bundle_document(data, source, destination, source_commit, unpublished=False)
     return re.sub(r"\[([^\]]+)\]\(([^\s)]+)\)", replace, data.decode()).encode()
 
 
-def build(root, wheel, output, source_commit, unpublished=False, rapidocr_wheel=None):
+def build(root, wheel, output, source_commit, unpublished=False, dependency_wheel_dir=None):
     if not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise ValueError("--source-commit must be a full source SHA (or base SHA with --unpublished)")
     with zipfile.ZipFile(wheel) as archive:
@@ -85,25 +88,26 @@ def build(root, wheel, output, source_commit, unpublished=False, rapidocr_wheel=
             entries[name] = bundle_document(entries[name], source, name, source_commit, unpublished)
     wheel_path = "wheels/" + wheel.name
     entries[wheel_path] = wheel.read_bytes()
-    dependencies=[]
-    ocr_requirements = [requirement for requirement in metadata.get_all("Requires-Dist", [])
-                        if re.split(r"[ ;(<>=!~\[]", requirement, 1)[0].lower() == "rapidocr"]
-    if any(not re.fullmatch(r"rapidocr\s*==\s*3\.10\.0\+bv\.3\s*(?:;.*)?", requirement, re.IGNORECASE)
-           for requirement in ocr_requirements):
-        raise ValueError("Package wheel must require RapidOCR 3.10.0+bv.3")
-    if ocr_requirements:
-        companion = rapidocr_wheel or root / "wheels/rapidocr-3.10.0+bv.3-py3-none-any.whl"
-        with zipfile.ZipFile(companion) as archive:
-            companion_metadata = [name for name in archive.namelist() if name.endswith(".dist-info/METADATA")]
-            if len(companion_metadata) != 1:
-                raise ValueError("Expected one RapidOCR companion metadata file")
-            companion_meta = BytesParser().parsebytes(
-                archive.read(companion_metadata[0]), headersonly=True)
-            if companion_meta["Name"] != "rapidocr" or companion_meta["Version"] != "3.10.0+bv.3":
-                raise ValueError("Wrong RapidOCR companion wheel")
-        dependency_path = "wheels/" + companion.name
-        entries[dependency_path] = companion.read_bytes()
-        dependencies.append({"wheel": dependency_path, "sha256": hashlib.sha256(entries[dependency_path]).hexdigest()})
+    dependency_wheels = []
+    if dependency_wheel_dir is not None:
+        wheel_files = sorted(dependency_wheel_dir.glob("*.whl"))
+        if not wheel_files:
+            raise ValueError("Dependency wheel directory is empty")
+        seen = set()
+        for dependency in wheel_files:
+            with zipfile.ZipFile(dependency) as archive:
+                metadata_files = [n for n in archive.namelist() if n.endswith(".dist-info/METADATA")]
+                if len(metadata_files) != 1:
+                    raise ValueError(f"Invalid dependency wheel: {dependency.name}")
+                info = BytesParser().parsebytes(archive.read(metadata_files[0]), headersonly=True)
+                name = re.sub(r"[-_.]+", "-", info.get("Name", "")).lower()
+                if not name or not info.get("Version") or name in seen or name == "opencv-bv-tools":
+                    raise ValueError(f"Duplicate or invalid dependency wheel: {dependency.name}")
+                seen.add(name)
+            path = "wheels/dependencies/" + dependency.name
+            data = dependency.read_bytes()
+            entries[path] = data
+            dependency_wheels.append({"wheel": path, "sha256": hashlib.sha256(data).hexdigest()})
     manifest = {"name": "opencv-bv-server", "package_version": version,
                 # The standalone builder cannot prove that either supplied wheel
                 # was built from this commit. The validator records that separately.
@@ -111,7 +115,7 @@ def build(root, wheel, output, source_commit, unpublished=False, rapidocr_wheel=
                 "claimed_source_commit": None if unpublished else source_commit,
                 "base_commit": source_commit if unpublished else None,
                 "source_state": "local-unpublished" if unpublished else "source-claimed",
-                "wheel": wheel_path, "dependency_wheels": dependencies,
+                "wheel": wheel_path, "dependency_wheels": dependency_wheels,
                 "wheel_sha256": hashlib.sha256(entries[wheel_path]).hexdigest(),
                 "files_sha256": {name: hashlib.sha256(data).hexdigest() for name, data in sorted(entries.items())}}
     entries["bundle.json"] = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode()
@@ -132,12 +136,12 @@ def build(root, wheel, output, source_commit, unpublished=False, rapidocr_wheel=
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--wheel", type=Path, required=True)
-    parser.add_argument("--rapidocr-wheel", type=Path)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--unpublished", action="store_true", help="Identify local changes against the supplied base commit")
+    parser.add_argument("--dependency-wheel-dir", type=Path, help="Include verified dependency wheels from this directory")
     parser.add_argument("--output", type=Path, default=Path("dist/opencv-bv-server-mcp.zip"))
     args = parser.parse_args()
-    build(Path(__file__).resolve().parents[1], args.wheel, args.output, args.source_commit, args.unpublished, args.rapidocr_wheel)
+    build(Path(__file__).resolve().parents[1], args.wheel, args.output, args.source_commit, args.unpublished, args.dependency_wheel_dir)
 
 
 if __name__ == "__main__":

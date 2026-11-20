@@ -106,19 +106,13 @@ def validate(work, prepare_only=False, unpublished=False):
         build_env = work / "build-env"
         run([sys.executable, "-m", "venv", build_env])
         builder = python_in(build_env)
-        run([builder, "-m", "pip", "install", "build==1.6.1", "setuptools==84.2.1", "wheel==0.45.1"])
-        upstream = work / "upstream"
-        run([builder, "-m", "pip", "download", "--no-deps", "--only-binary=:all:",
-             "rapidocr==3.10.0", "-d", upstream])
-        companion = work / "companion"
-        run([builder, ROOT / "scripts/build_rapidocr.py", upstream / "rapidocr-3.10.0-py3-none-any.whl",
-             "--output", companion])
+        run([builder, "-m", "pip", "install", "build==1.6.1", "setuptools==84.2.1", "wheel==0.45.1",
+             "nanobind==2.11.0", "cmake>=3.21,<4", "pypdfium2==5.14.0"])
         dist = work / "dist"
         run([builder, "-m", "build", "--wheel", "--no-isolation", "--outdir", dist], env={"SOURCE_DATE_EPOCH": epoch})
         wheel, = dist.glob("opencv_bv_tools-*.whl")
-        ocr_wheel, = companion.glob("*.whl")
         archive = dist / "opencv-bv-server-mcp.zip"
-        run([builder, ROOT / "scripts/build_mcp_zip.py", "--wheel", wheel, "--rapidocr-wheel", ocr_wheel,
+        run([builder, ROOT / "scripts/build_mcp_zip.py", "--wheel", wheel,
              "--source-commit", commit, "--output", archive, *(["--unpublished"] if unpublished else [])])
         manifest = verify_bundle(archive, commit, unpublished)
         digest, entries = content_digest(archive)
@@ -152,7 +146,14 @@ def validate(work, prepare_only=False, unpublished=False):
         platform_report = json.loads((work / "platform/platform-report.json").read_text())
         report["default_install"] = platform_report["target"]
         assert all(report["default_install"]["packages"][name] is None
-                   for name in ("Pillow", "reportlab", "requests", "charset-normalizer", "onnxruntime", "onnxruntime-gpu", "Shapely"))
+                   for name in ("pypdfium2", "zxing-cpp", "Pillow", "pyoxipng", "pyclipper", "reportlab", "requests", "charset-normalizer", "rapidocr", "onnxruntime", "onnxruntime-gpu", "Shapely"))
+        assert report["default_install"]["pypdfium2_absent"], "Standalone pypdfium2 must not be installed or importable"
+        assert report["default_install"]["pdfium_binding_present"], "Bundled PDFium binding is missing"
+        assert report["default_install"]["zxing_distribution_absent"], "Standalone ZXing must not be installed or importable"
+        assert report["default_install"]["zxing_extension_present"], "Bundled ZXing extension is missing"
+        assert report["default_install"]["pyclipper_absent"], "pyclipper must not be installed or importable"
+        assert report["default_install"]["clipper_extension_present"], "The native Clipper extension is missing"
+        assert report["default_install"]["rapidocr_absent"], "RapidOCR must not be installed or importable"
         assert report["default_install"]["onnxruntime_absent"], "ONNX Runtime must not be installed or importable"
         assert report["default_install"]["shapely_absent"], "Shapely must not be installed or importable"
         print("DEFAULT INSTALL " + json.dumps(report["default_install"], sort_keys=True), flush=True)

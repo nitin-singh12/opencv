@@ -13,7 +13,6 @@ import time
 import zlib
 import pytest
 png=pytest.importorskip('png',reason='Install png-test extra')
-pytest.importorskip('oxipng',reason='Install png extra')
 from PIL import Image,ImageCms,PngImagePlugin
 from opencv_bv_tools.png_compression import PNGLimits
 from opencv_bv_tools.png_compression import PNGCompressionError
@@ -192,29 +191,28 @@ def test_bad_api_options(kwargs):
     with pytest.raises(PNGCompressionError):compress_png(b'x',**kwargs)
 
 
-def test_native_dependency_version_and_bad_representation(monkeypatch):
-    from opencv_bv_tools.runtime import png_worker as worker
-    import oxipng
-    data=pillow_png();options={'limits':asdict(PNGLimits())}
-    monkeypatch.setattr(worker,'version',lambda name:'0')
-    assert worker.optimize(data,options)['stop_reason']=='unsupported_optimizer_version'
-    monkeypatch.setattr(worker,'version',lambda name:'9.1.1')
-    monkeypatch.setattr(oxipng,'optimize_from_memory',lambda *a,**k:pillow_png('RGB'))
-    guarded=worker.optimize(data,options)
-    assert guarded['status']=='unchanged' and guarded['stop_reason']=='representation_preservation_guard'
-    assert base64.b64decode(guarded['data_base64'])==data
-    monkeypatch.setitem(sys.modules,'oxipng',None)
-    assert worker.optimize(data,options)['stop_reason']=='missing_png_dependency'
-
-
 def test_unchanged_is_exact_original(monkeypatch):
-    import oxipng
-    from opencv_bv_tools.runtime.png_worker import optimize
+    from opencv_bv_tools.runtime import png_worker as worker
     data=pillow_png()
-    monkeypatch.setattr(oxipng,'optimize_from_memory',lambda data,**kwargs:data)
-    r=optimize(data,{'limits':asdict(PNGLimits())})
-    assert r['status']=='unchanged' and r['bytes_saved']==0
-    assert base64.b64decode(r['data_base64'])==data
+    monkeypatch.setattr(worker,'replace_idat',lambda source,compressed:data)
+    result=worker.optimize(data,{'limits':asdict(PNGLimits())})
+    assert result['status']=='unchanged' and result['bytes_saved']==0
+    assert base64.b64decode(result['data_base64'])==data
+
+
+def test_split_idat_and_tight_chunk_limit():
+    data=pillow_png('RGB',level=0)
+    parts=chunks(data)
+    split=[]
+    for kind,value in parts:
+        if kind==b'IDAT':
+            midpoint=len(value)//2
+            split.extend([(kind,value[:midpoint]),(kind,value[midpoint:])])
+        else:
+            split.append((kind,value))
+    source=assemble(split)
+    output=verify(source,compress_png(source,limits=PNGLimits(max_chunks=len(split))))
+    assert len(chunks(output))<=len(split)
 
 
 def fake_worker(code,timeout=.3,cancelled=None,data=b'x'*100000):
@@ -315,13 +313,16 @@ def test_no_clobber_race_and_failed_publish_cleanup(tmp_path,monkeypatch):
     assert not target.exists() and not list(tmp_path.glob('.opencv-bv-*'))
 
 
-def test_same_representation_changed_samples_never_published(monkeypatch):
-    import oxipng
-    from opencv_bv_tools.runtime.png_worker import optimize
+def test_changed_filtered_samples_never_published(monkeypatch):
+    from opencv_bv_tools.runtime import png_worker as worker
     data=pillow_png('RGB',level=0)
-    im=Image.new('RGB',(31,29),'black');b=BytesIO();im.save(b,format='PNG')
-    monkeypatch.setattr(oxipng,'optimize_from_memory',lambda *a,**k:b.getvalue())
-    assert optimize(data,{'limits':asdict(PNGLimits())})['stop_reason']=='optimizer_verification_failed'
+    real=worker.recompress
+    def corrupt(raw):
+        changed=bytearray(raw)
+        changed[-1] ^= 1
+        return real(bytes(changed))
+    monkeypatch.setattr(worker,'recompress',corrupt)
+    assert worker.optimize(data,{'limits':asdict(PNGLimits())})['stop_reason']=='optimizer_verification_failed'
 
 
 def test_invalid_filter_even_with_valid_size_and_crc():

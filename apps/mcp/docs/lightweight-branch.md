@@ -2,17 +2,41 @@
 
 This application uses OpenCV/NumPy for image I/O and a small bounded writer for
 image-only PDF creation. Default runtime no longer needs Pillow, ReportLab,
-requests or charset-normalizer. It still needs pyoxipng for current PNG
-optimization and PDFium for current PDF rendering/redaction. Replacing a PDF
+requests or charset-normalizer. PNG optimization uses Python's zlib; PDFium is
+still needed for current PDF rendering/redaction. Replacing a PDF
 renderer is a separate compatibility task, not a dependency-free OpenCV call.
 
-Follow the [README](../README.md) to build the required RapidOCR companion wheel,
-install the package and test all nine tools. Version `0.10.0.dev3` uses companion
-`rapidocr==3.10.0+bv.3`. It preserves upstream model bytes and OCR preprocessing,
-replaces Shapely in detector box expansion with scalar geometry, makes Pillow
-and requests helpers optional, and accepts an
-inference-session factory on each OCR instance. Without a factory, the companion
-retains upstream inference-session behavior.
+The zlib PNG backend was compared on 34 available original development inputs
+on Linux. All 34 completed and independently matched decoded samples and
+non-IDAT metadata; output never grew relative to the input. Compared with the
+prior optimizer, output files were smaller in 20 cases, larger in 10 and equal
+in four. The earlier corpus contained 40 cases; this is not a held-out test or
+a claim that compression is always better. Native Windows/macOS testing of
+this change remains pending.
+
+The experimental no-RapidOCR candidate includes the two verified PP-OCRv6
+models and recognition dictionary directly in the application wheel. Its OCR
+processing uses OpenCV, NumPy and the bundled Clipper C++ extension; it does not install or import
+RapidOCR. The detector code retains attribution to RapidOCR/PaddleOCR and the
+models retain their original notices. Follow the [README](../README.md) for
+installation. Current comparison evidence is maintained separately; the
+measurements below describe historical candidates and do not by themselves
+prove the new candidate's accuracy.
+
+The Python wheel is platform-specific because it contains a Clipper extension.
+The native code is compiled from the pinned source in `3rdparty/clipper`; the
+optional `BUILD_MCP_CLIPPER` CMake target is off by default and is separate
+from the wheel build. A wheel or ZIP built on Linux is not a Windows or macOS
+package. Each target requires its own build and test.
+
+On Linux, a RapidOCR-free prototype matched the preceding implementation on
+all 280 original images and 49 original PDFs (91 pages), including detected
+results and rendered redaction pixels. The integrated branch wheel separately
+matched nine images and three PDFs against the same baseline. The integrated
+branch's full Linux test suite passed 1,461 tests and 51 subtests, with 26
+Windows-only skips. These comparisons show parity on the tested cases, not
+perfect detection on every input. Native Windows and macOS validation remains
+pending for this change.
 
 For the Shapely-free candidate, a fresh Linux installation passed all nine
 tools with Shapely and ONNX Runtime absent. The full application suite passed
@@ -28,7 +52,7 @@ completed corpus processing.
 
 ## OpenCV DNN OCR backend
 
-The application supplies OpenCV DNN sessions for CPU inference with the bundled
+The previous application supplied OpenCV DNN sessions for CPU inference with the bundled
 PP-OCRv6 small detector and recognizer. It does not install or import the Python
 `onnxruntime` package or require a separate Python `onnx` parser. OpenCV loads the
 ONNX model files directly. The recognition dictionary in
@@ -65,7 +89,7 @@ uv pip install --python .venv/bin/python -c install-constraints.txt '.[cmyk]'
 For an extracted ZIP use its application wheel instead:
 
 ```bash
-uv pip install --python .venv/bin/python -c install-constraints.txt 'wheels/opencv_bv_tools-0.10.0.dev3-py3-none-any.whl[cmyk]'
+uv pip install --python .venv/bin/python -c install-constraints.txt 'wheels/opencv_bv_tools-0.10.0.dev4-py3-none-any.whl[cmyk]'
 ```
 
 If the environment has pip, `python -m pip install` can be used instead of

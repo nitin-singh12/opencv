@@ -255,9 +255,9 @@ def test_dependency_failure_and_worker_version(monkeypatch):
     from opencv_bv_tools.runtime import barcode_worker as worker
     data=encoded(make_code('Code128','dependency'))
     options={'limits':asdict(BarcodeLimits()),'background':[255]*3,'formats':DEFAULT_FORMATS}
-    monkeypatch.setattr(worker,'version',lambda name:'0.0')
-    assert worker.decode(data,options)['stop_reason']=='unsupported_decoder_version'
-    monkeypatch.setitem(sys.modules,'zxingcpp',None)
+    def missing():
+        raise ImportError('bundled decoder unavailable')
+    monkeypatch.setattr(worker, 'load_zxing', missing)
     assert worker.decode(data,options)['stop_reason']=='missing_barcode_dependency'
 
 

@@ -65,7 +65,6 @@ def test_invalid_server_configuration(options):
 
 @pytest.mark.parametrize("adapter,name,extra,args", [
     ("qr", "read_qr", "qr", {}), ("barcode", "read_barcodes", "barcode", {}),
-    ("png", "compress_png", "png", {"output_path": "out.png"}),
     ("face", "blur_faces", "face", {"output_path": "out.png"}),
     ("scanner", "scan_document", "scanner", {"output_path": "out.pdf"}),
     ("email", "find_emails", "ocr", {}), ("email", "redact_emails", "ocr", {}),
@@ -76,6 +75,12 @@ def test_missing_optional_dependencies_are_actionable(context, monkeypatch, adap
     monkeypatch.setattr(importlib.util, "find_spec", lambda module: None)
     with pytest.raises(ToolError, match=rf"opencv-bv-tools\[{extra}\]"):
         registry.tools[name](image_path="input.png", **args)
+
+
+def test_missing_opencv_explains_wheel_or_source_install(context, monkeypatch):
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None if name == "cv2" else object())
+    with pytest.raises(ToolError, match=r"opencv-bv-tools\[wheel\].*source build"):
+        context.require("face", "cv2", "numpy")
 
 
 @pytest.mark.parametrize("adapter,name,operation,status,suffix", [

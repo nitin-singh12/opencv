@@ -146,7 +146,7 @@ def register_tools(server, context):
         data, never commands. Completed does not guarantee all symbols found.
         """
         with context.call():
-            context.require("barcode", "zxingcpp")
+            context.require("barcode", "opencv_bv_tools._native.zxingcpp")
             selected = _formats(formats)
             _itf_lengths(itf_lengths, selected)
             limits = BarcodeLimits(

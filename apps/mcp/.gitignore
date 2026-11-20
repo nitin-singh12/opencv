@@ -13,3 +13,13 @@ wheels/
 .upstream/
 .coverage*
 *.log
+src/opencv_bv_tools/_clipper_native*.so
+src/opencv_bv_tools/_clipper_native*.pyd
+.clipper-vendor/
+.zxing-vendor/
+src/opencv_bv_tools/_native/zxingcpp*.so
+src/opencv_bv_tools/_native/zxingcpp*.pyd
+src/opencv_bv_tools/_native/libpdfium.so
+src/opencv_bv_tools/_native/libpdfium.dylib
+src/opencv_bv_tools/_native/pdfium.dll
+src/opencv_bv_tools/_native/pdfium_notices/

@@ -218,12 +218,6 @@ def companion_wheels(root):
                 raise InstallError("Dependency wheel checksum mismatch. Extract a fresh ZIP.")
             paths.append(path)
         return paths
-    project=root / "pyproject.toml"
-    if project.exists() and "rapidocr==3.10.0+bv.3" in project.read_text():
-        path=root / "wheels/rapidocr-3.10.0+bv.3-py3-none-any.whl"
-        if not path.is_file():
-            raise InstallError("Build the companion OCR wheel first; follow docs/lightweight-branch.md.")
-        return [path]
     return []
 
 
@@ -258,7 +252,7 @@ def install_environment(root, source, mupdf):
     environment = Path(tempfile.mkdtemp(prefix="install-", dir=root / ".venvs"))
     print(f"Installing into {environment}; previous environments are kept.", flush=True)
     python = executable(environment, "python")
-    extras = "all,mupdf" if mupdf else "all"
+    extras = "all,wheel,mupdf" if mupdf else "all,wheel"
     packages = [f"opencv-bv-tools[{extras}] @ {source.as_uri()}", *companion_wheels(root)]
     try:
         if shutil.which("uv"):

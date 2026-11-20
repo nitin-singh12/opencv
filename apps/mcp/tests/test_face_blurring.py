@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 
 import pytest
 np=pytest.importorskip('numpy')
@@ -235,20 +236,20 @@ class FakeDetector:
 
 @pytest.mark.parametrize('bad',[np.zeros((1,14)),np.full((1,15),np.nan),np.zeros((1,15))])
 def test_invalid_native_boxes(monkeypatch,bad):
-    monkeypatch.setattr(cv.FaceDetectorYN,'create',lambda *a:FakeDetector(bad))
+    monkeypatch.setattr(cv,'FaceDetectorYN',SimpleNamespace(create=lambda *a:FakeDetector(bad)))
     with pytest.raises(ValueError):worker.detect_regions(np.zeros((100,100,3),np.uint8),cv,np,b'ignored')
 
 
 def test_candidate_cap_without_partial_result(monkeypatch):
     found=np.zeros((513,15));found[:,2:4]=20;found[:,14]=0.9
-    monkeypatch.setattr(cv.FaceDetectorYN,'create',lambda *a:FakeDetector(found))
+    monkeypatch.setattr(cv,'FaceDetectorYN',SimpleNamespace(create=lambda *a:FakeDetector(found)))
     with pytest.raises(worker.FaceResourceError):worker.detect_regions(np.asarray(photo()),cv,np,b'x')
 
 
 def test_topk_exceeds_all_anchors_and_view_size_is_bounded(monkeypatch):
     calls=[];det=FakeDetector(None)
     def create(*args):calls.append(args);return det
-    monkeypatch.setattr(cv.FaceDetectorYN,'create',create)
+    monkeypatch.setattr(cv,'FaceDetectorYN',SimpleNamespace(create=create))
     assert worker.detect_regions(np.zeros((1,16384,3),np.uint8),cv,np,b'x')==([],0)
     assert calls[0][6]>sum((640//stride)**2 for stride in (8,16,32))
     assert det.calls==[(320,320),(640,640)]

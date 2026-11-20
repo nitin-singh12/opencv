@@ -11,7 +11,7 @@
   "extraction": "onnxruntime.InferenceSession(model).get_modelmeta().custom_metadata_map[\"character\"].encode(\"utf-8\")",
   "extraction_tool_version": "onnxruntime==1.23.2 (development-time extraction only; not required to build, install or run the package)",
   "license": "Apache-2.0",
-  "attribution": "Baidu / PaddlePaddle / PaddleOCR; RapidOCR model conversion and packaging. See companion MODEL_LICENSES.md.",
+  "attribution": "Baidu / PaddlePaddle / PaddleOCR; RapidOCR model conversion and packaging. See bundled docs/licenses/RAPIDOCR-MODEL-NOTICES.txt.",
   "model_license_url": "https://rapidai.github.io/RapidOCRDocs/main/en/model_licenses/",
   "upstream_model_url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx"
 }

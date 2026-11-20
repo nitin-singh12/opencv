@@ -16,68 +16,30 @@ from opencv_bv_tools.runtime import ocr_opencv as backend
 from opencv_bv_tools.runtime.image_redact import Ocr
 
 
-@pytest.mark.parametrize("after", [0, 1, 2])
-def test_companion_patch_insertion_keeps_original_line_order(monkeypatch, after):
-    path = Path(__file__).resolve().parents[1] / "scripts/build_rapidocr.py"
-    spec = importlib.util.spec_from_file_location("build_rapidocr", path)
-    builder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(builder)
-    name = "rapidocr/main.py"
-    monkeypatch.setattr(builder, "PATCHED", {name})
-    files = {name: b"first\nsecond\n"}
-    patch = f"--- a/{name}\n+++ b/{name}\n@@ -{after},0 +{after+1},1 @@\n+inserted\n"
-    builder.apply_patch(files, patch)
-    expected = [b"first\n", b"second\n"]
-    expected.insert(after, b"inserted\n")
-    assert files[name] == b"".join(expected)
-
-
-def test_lazy_instances_and_classifier_never_falls_back(monkeypatch):
-    import rapidocr.ch_ppocr_cls.main as classifier
-    import rapidocr.ch_ppocr_det.main as detector
-    import rapidocr.ch_ppocr_rec.main as recognizer
-
-    def forbidden(*args):
-        pytest.fail("Injected sessions must not select an upstream inference engine")
-
-    for module in (classifier, detector, recognizer):
-        monkeypatch.setattr(module, "get_engine", forbidden)
+def test_lazy_instances_are_independent(monkeypatch):
+    from opencv_bv_tools.runtime import ocr_native as native
+    created = []
+    class FakeDetector:
+        def __init__(self, path):
+            self.session = object()
+            created.append(self)
+        def __call__(self, image):
+            return None
+    monkeypatch.setattr(native, "Detector", FakeDetector)
     first, second = Ocr(), Ocr()
     assert first.providers() == second.providers() == {}
-    assert first.engine.text_det is second.engine.text_det is None
-    first.engine._load_det_model()
-    assert second.engine.text_det is None
-    second.engine._load_det_model()
+    first.engine(np.zeros((32, 32, 3), np.uint8), use_det=True, use_cls=False, use_rec=False)
+    assert first.engine.text_det is not None and second.engine.text_det is None
+    second.engine(np.zeros((32, 32, 3), np.uint8), use_det=True, use_cls=False, use_rec=False)
     assert first.engine.text_det.session is not second.engine.text_det.session
     assert first.providers() == {"text_det": ["OpenCV DNN CPU"]}
-    with pytest.raises(ValueError, match="bundled v6-small"):
-        first.engine._load_cls_model()
-    assert first.engine.text_cls is None
 
 
-def test_companion_without_factory_keeps_upstream_engine_selection(monkeypatch):
-    from rapidocr import RapidOCR
-    import rapidocr.ch_ppocr_det.main as detector
-    import rapidocr.ch_ppocr_rec.main as recognizer
-
-    class Session:
-        def have_key(self, key="character"):
-            return key == "character"
-
-        def get_character_list(self, key="character"):
-            return ["a", "b"]
-
-    selected = []
-    def select_engine(kind):
-        selected.append(kind)
-        return lambda cfg: Session()
-
-    for module in (detector, recognizer):
-        monkeypatch.setattr(module, "get_engine", select_engine)
-    ocr = RapidOCR(params={"Global.use_cls": False})
-    assert isinstance(ocr._load_det_model().session, Session)
-    assert isinstance(ocr._load_rec_model().session, Session)
-    assert len(selected) == 2
+@pytest.mark.parametrize("det,cls,rec", [(True, True, False), (True, False, True), (False, False, False)])
+def test_unsupported_ocr_modes_are_rejected(det, cls, rec):
+    ocr = Ocr()
+    with pytest.raises(ValueError, match="classification is unavailable"):
+        ocr.engine(np.zeros((32, 32, 3), np.uint8), use_det=det, use_cls=cls, use_rec=rec)
 
 
 @pytest.mark.parametrize("kind", ["missing", "changed", "wrong_count"])
@@ -89,20 +51,20 @@ def test_dictionary_integrity_before_model_loading(tmp_path, monkeypatch, kind):
     if kind == "wrong_count":
         monkeypatch.setattr(backend, "CHARACTERS_SHA256", hashlib.sha256(path.read_bytes()).hexdigest())
     monkeypatch.setattr(cv2.dnn, "readNetFromONNX", lambda *args: pytest.fail("Unverified dictionary"))
+    from opencv_bv_tools.runtime import ocr_native as native
     with pytest.raises(RuntimeError, match="missing or has changed|unexpected size"):
-        Ocr().engine._load_rec_model()
+        native.Recognizer(tmp_path / "unused.onnx", path)
 
 
 @pytest.mark.parametrize("exists", [False, True])
 def test_missing_or_changed_weights_never_load(tmp_path, monkeypatch, exists):
-    import rapidocr
-    monkeypatch.setattr(rapidocr, "__file__", str(tmp_path / "__init__.py"))
+    from opencv_bv_tools.runtime import ocr_native as native
+    path = tmp_path / backend.MODELS["det"][0]
     if exists:
-        (tmp_path / "models").mkdir()
-        (tmp_path / "models" / backend.MODELS["det"][0]).write_bytes(b"changed model")
+        path.write_bytes(b"changed model")
     monkeypatch.setattr(cv2.dnn, "readNetFromONNX", lambda *args: pytest.fail("Unverified model"))
     with pytest.raises(RuntimeError, match="missing or has changed"):
-        Ocr().engine._load_det_model()
+        native.Detector(path)
 
 
 @pytest.mark.parametrize("options", [{"device": "cuda"}, {"models": "v6-tiny"}])
@@ -116,7 +78,10 @@ def test_recognizer_batches_widths_and_repeated_net():
     cv2.setNumThreads(2)
     try:
         ocr = Ocr()
-        session = ocr.engine._load_rec_model().session
+        from opencv_bv_tools.runtime import ocr_native as native
+        path = Path(backend.__file__).resolve().parents[1] / "models" / backend.MODELS["rec"][0]
+        recognizer = native.Recognizer(path, backend.CHARACTERS)
+        session = recognizer.session
         first = np.random.default_rng(20261112).standard_normal((1, 3, 48, 320)).astype(np.float32)
         expected = session(first)
         for batch, width in ((2, 640), (1, 160), (3, 320), (1, 320)):
@@ -124,7 +89,7 @@ def test_recognizer_batches_widths_and_repeated_net():
             assert output.shape[0] == batch and output.shape[2] == backend.CHARACTER_COUNT + 2
             assert np.isfinite(output).all()
         assert np.array_equal(session(first), expected)
-        assert len(ocr.engine.text_rec.postprocess_op.character) == expected.shape[2]
+        assert len(recognizer.characters) == expected.shape[2]
     finally:
         cv2.setNumThreads(previous)
 
@@ -135,7 +100,7 @@ def test_ocr_and_pdf_imports_without_runtime_or_network():
 import importlib.abc,json,socket,sys
 class Deny(importlib.abc.MetaPathFinder):
     def find_spec(self, name, path=None, target=None):
-        if name.split('.')[0] in {'onnxruntime', 'onnx', 'shapely'}:
+        if name.split('.')[0] in {'rapidocr', 'onnxruntime', 'onnx', 'shapely'}:
             raise AssertionError('Forbidden inference dependency: ' + name)
 sys.meta_path.insert(0,Deny())
 def offline(*args, **kwargs):
@@ -151,8 +116,8 @@ with open(sys.argv[1],'rb') as stream:
     rgb=app.open_image(stream)
 result=app.detect(rgb,ocr)
 assert len(result.boxes)>=2
-assert ocr.engine.text_cls is None
-assert not any(k.split('.')[0] in {'onnxruntime','onnx','shapely'} for k in sys.modules)
+assert not hasattr(ocr.engine, "text_cls")
+assert not any(k.split('.')[0] in {'rapidocr','onnxruntime','onnx','shapely'} for k in sys.modules)
 print(json.dumps({'boxes':len(result.boxes),'backend':ocr.providers()}))
 '''
     process = subprocess.run([sys.executable, "-c", script, str(fixture)], capture_output=True,
@@ -165,29 +130,31 @@ print(json.dumps({'boxes':len(result.boxes),'backend':ocr.providers()}))
 _GOLDEN_UNCLIP = json.loads((Path(__file__).parent / 'fixtures/ocr/unclip-golden.json').read_text())['cases']
 
 
+@pytest.mark.parametrize('distance', [float('nan'), float('inf'), float('-inf'), 1e300])
+def test_native_clipper_rejects_unsafe_distances(distance):
+    from opencv_bv_tools import _clipper_native
+    with pytest.raises(ValueError):
+        _clipper_native.offset([[0, 0], [10, 0], [10, 10], [0, 10]], distance)
+
+
+def test_native_clipper_rejects_unsafe_coordinates():
+    from opencv_bv_tools import _clipper_native
+    with pytest.raises(ValueError):
+        _clipper_native.offset([[0, 0], [2**61, 0], [2**61, 10]], 1)
+
+
 @pytest.mark.parametrize('case', _GOLDEN_UNCLIP, ids=lambda case: case['id'])
 def test_unclip_matches_frozen_pre_removal_geometry(monkeypatch, case):
-    import rapidocr.ch_ppocr_det.utils as detector
+    from opencv_bv_tools.runtime import ocr_native as detector
 
-    original = detector.pyclipper
+    original = detector._clipper_native
     distances = []
 
-    class RecordingOffset:
-        def __init__(self):
-            self.inner = original.PyclipperOffset()
+    def recording_offset(points, distance):
+        distances.append(float(distance).hex())
+        return original.offset(points, distance)
 
-        def AddPath(self, *args):
-            return self.inner.AddPath(*args)
-
-        def Execute(self, distance):
-            distances.append(float(distance).hex())
-            return self.inner.Execute(distance)
-
-    monkeypatch.setattr(detector, 'pyclipper', SimpleNamespace(
-        PyclipperOffset=RecordingOffset,
-        JT_ROUND=original.JT_ROUND,
-        ET_CLOSEDPOLYGON=original.ET_CLOSEDPOLYGON,
-    ))
+    monkeypatch.setattr(detector, '_clipper_native', SimpleNamespace(offset=recording_offset))
     operation = detector.DBPostProcess(unclip_ratio=case['unclip_ratio'])
     points = np.array(case['points'], dtype=case['dtype']).reshape(case['shape'])
     if 'exception' in case:
@@ -204,3 +171,23 @@ def test_unclip_matches_frozen_pre_removal_geometry(monkeypatch, case):
         actual,
         np.array(expected['values'], dtype=expected['dtype']).reshape(expected['shape']),
     )
+
+
+def test_ctc_keeps_blank_separated_repeats_and_character_positions():
+    from opencv_bv_tools.runtime.ocr_native import Recognizer
+    recognizer = Recognizer.__new__(Recognizer)
+    recognizer.characters = ["blank", "a", "b", " "]
+    indices = [1, 1, 0, 1, 3, 2]
+    predictions = np.zeros((1, len(indices), len(recognizer.characters)), dtype=np.float32)
+    predictions[0, np.arange(len(indices)), indices] = 1.0
+    inputs = []
+    def inference(tensor):
+        inputs.append(tensor)
+        return predictions
+    recognizer.session = inference
+    output = recognizer(np.zeros((48, 96, 3), dtype=np.uint8))
+    assert output.txts == ["aa b"]
+    assert output.word_results[0].word_cols == [[0, 3, 5]]
+    assert output.word_results[0].line_txt_len == pytest.approx(6 * 2 / (320 / 48))
+    assert inputs[0].shape == (1, 3, 48, 320)
+    assert np.all(inputs[0][:, :, :, 96:] == 0)

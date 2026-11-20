@@ -1,16 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # See the LICENSE file distributed with this application for license terms.
 
-"""CPU inference for the bundled OCR models; RapidOCR owns pre/postprocessing.
+"""Integrity checks for the bundled OCR models and recognition dictionary.
 
 Sessions are private to a resident worker, whose requests are serialized. The
 worker/CLI sets OpenCV's process-wide thread limit before constructing OCR.
 """
 import hashlib
 from pathlib import Path
-
-import cv2
-import numpy as np
 
 
 MODELS = {
@@ -33,9 +30,8 @@ def _verified_bytes(path, digest):
 
 
 def _model_bytes(role):
-    import rapidocr
     name, digest = MODELS[role]
-    path = Path(rapidocr.__file__).parent / "models" / name
+    path = Path(__file__).resolve().parents[1] / "models" / name
     return _verified_bytes(path, digest)
 
 
@@ -53,35 +49,3 @@ def check_models():
     for role in MODELS:
         _model_bytes(role)
     _characters()
-
-
-class OpenCVSession:
-    """RapidOCR session interface for pinned PP-OCRv6 small Chinese models."""
-
-    def __init__(self, cfg):
-        self.role = cfg.task_type.value
-        if (self.role not in MODELS or cfg.ocr_version.value != "PP-OCRv6"
-                or cfg.model_type.value != "small" or cfg.lang_type.value != "ch"):
-            raise ValueError("OpenCV OCR supports only the bundled v6-small detector and recognizer.")
-        self.characters = _characters() if self.role == "rec" else None
-        # Python reads Unicode paths consistently; OpenCV receives the same
-        # verified bytes directly instead of opening a platform-specific path.
-        model = np.frombuffer(_model_bytes(self.role), dtype=np.uint8)
-        self.net = cv2.dnn.readNetFromONNX(model)
-        self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
-        self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
-
-    def __call__(self, tensor):
-        self.net.setInput(tensor, "x")
-        output = self.net.forward("fetch_name_0")
-        if self.role == "rec" and (output.ndim != 3 or output.shape[-1] != CHARACTER_COUNT + 2):
-            raise RuntimeError("OCR recognizer output does not match the character dictionary.")
-        return output
-
-    def have_key(self, key="character"):
-        return key == "character" and self.characters is not None
-
-    def get_character_list(self, key="character"):
-        if not self.have_key(key):
-            raise KeyError(key)
-        return self.characters.copy()

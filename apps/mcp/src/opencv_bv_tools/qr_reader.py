@@ -94,7 +94,7 @@ def register_tools(server, context):
         A completed search does not guarantee every symbol was found.
         """
         with context.call():
-            context.require("qr", "zxingcpp")
+            context.require("qr", "opencv_bv_tools._native.zxingcpp")
             limits = QRLimits(
                 timeout_seconds=timeout_seconds,
                 max_pixels=min(context.max_pixels, 8_000_000),

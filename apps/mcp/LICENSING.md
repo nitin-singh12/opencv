@@ -8,45 +8,31 @@ Third-party code, dependencies, model weights and externally sourced fixtures
 retain their own licences and attribution. They are not relicensed by the
 application's Apache-2.0 declaration. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-The application wheel includes the MIT-licensed YuNet model, so its distribution
-metadata declares `Apache-2.0 AND MIT`. This describes the combined archive;
+The application wheel includes third-party code and models, so its distribution
+metadata declares `Apache-2.0 AND MIT AND BSL-1.0 AND BSD-3-Clause AND LicenseRef-PDFium-Bundled-Notices`. This describes the combined archive;
 it does not offer a choice of licence for each component. The full YuNet MIT
 notice remains beside the model and in the distribution's licence files.
 
-The companion RapidOCR wheel remains a separately identified modified upstream
-distribution, `3.10.0+bv.3`. Its Apache-2.0 licence, model attribution and
-modification notice are preserved. The application also includes a recognition
-dictionary extracted from the bundled PP-OCRv6 model metadata; it retains the
-model's Apache-2.0 terms and attribution, with its
-extraction provenance recorded at `opencv_bv_tools/models/ocr-provenance.json`
-inside the application wheel. The unchanged upstream
-[model notice](docs/licenses/RAPIDOCR-MODEL-NOTICES.txt) is included in both the
-application wheel and installer ZIP. Its `PP-OCRv6_rec_small.onnx` entry applies
-to this dictionary; the dictionary's character data is not altered by notices.
-Changing inference to OpenCV DNN does not relicense those resources or remove
-OpenCV's applicable native component notices. Other dependencies retain their
-wheel-specific notices; historical notices remain relevant to earlier builds.
+The bundled PP-OCRv6 model weights and recognition dictionary retain their
+Apache-2.0 terms and attribution, with extraction provenance recorded at
+`opencv_bv_tools/models/ocr-provenance.json`. The unchanged upstream
+[model notice](docs/licenses/RAPIDOCR-MODEL-NOTICES.txt) is included in the
+application wheel and installer ZIP. The adapted OCR detector code retains the
+upstream attribution and a modification notice. OpenCV and other downloaded
+runtime dependencies retain their own notices.
 
 ## What this distribution contains
 
-The application wheel contains application code, the MIT-licensed YuNet model,
-and the Apache-2.0 OCR dictionary. The installer ZIP adds a modified RapidOCR
-wheel, installer scripts, documentation and smoke-test fixtures. RapidOCR's
-three bundled models, including its unused angle classifier, retain their full
-upstream model notice. Every modified RapidOCR Python file carries a change
-notice, in addition to the central `BV-MODIFICATIONS.txt` summary.
+The application wheel includes the Clipper and ZXing native extensions, the PDFium native library, nanobind
+binding code, the YuNet and PP-OCRv6 models, and their required notices. The ZIP
+adds installer scripts, documentation and smoke-test fixtures. Depending on how
+it is built, it may also include unmodified dependency wheels such as OpenCV,
+NumPy and MCP. Each included wheel retains its own notices.
 
-The ZIP does not include OpenCV, NumPy, MCP, PDFium, ZXing, Oxipng, GEOS or their
-installed environments. The installer downloads their packages separately;
-it does not strip their licence files or rebuild their native libraries.
-No font files are included in the application or RapidOCR wheels. These are
-statements about the archive contents, not a completed review of every native
-dependency downloaded on every operating system.
-
-An offline bundle or executable that includes those downloaded dependencies is
-a different distribution and requires review of those exact artifacts, including
-any LGPL source/relinking or MPL source-availability requirements. Such a bundle
-is not produced by the current ZIP builder.
+The exact contents of any offline bundle require a separate redistribution
+review, including any applicable LGPL source/relinking or MPL source-availability
+requirements. No font files are included in the application wheel. This document
+does not assert a completed licence review for every platform-specific wheel.
 
 `PROVENANCE.json` records the historical subproject import. The ZIP's
 `bundle.json` records its current version, source state and file checksums. For a

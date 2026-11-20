@@ -5,7 +5,7 @@
 """Find email addresses in a screenshot and cover them with solid boxes.
 
 The pipeline has three steps:
-  1. Find the text lines with RapidOCR's detector (small ONNX model, CPU
+  1. Find the text lines with the OCR detector (small ONNX model, CPU
      only), then read every line twice from padded crops: once in colour and
      once normalised to grey. Each reading gives rough character positions.
   2. Look for valid addresses in each visual row of text, in both readings,
@@ -30,7 +30,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from . import image_io
-from .ocr_opencv import OpenCVSession, check_models
+from .ocr_opencv import check_models
 
 # --------------------------------------------------------------------------
 # Address pattern
@@ -120,7 +120,7 @@ class Line:
         return self.y1 - self.y0
 
 
-# Model sets RapidOCR can load: (detector, recogniser) as (version, size, language).
+# Supported model sets: (detector, recogniser) as (version, size, language).
 MODEL_SETS = {
     "v6-small": (("PP-OCRv6", "small", "ch"), ("PP-OCRv6", "small", "ch")),
 }
@@ -219,7 +219,7 @@ def _already_found(line, lines):
 
 
 class Ocr:
-    """RapidOCR finds the text lines; each line is then read twice from a
+    """The OCR detector finds the text lines; each line is then read twice from a
     padded crop, once in colour and once normalised to grey. Two independent
     readings catch most single misreads (9 px text, odd colours).
 
@@ -231,7 +231,7 @@ class Ocr:
     benchmark covers and bounded in memory: strips wider than TILE_ABOVE are
     read in overlapping tiles (on wide, mostly empty 4K and 5K screenshots
     the detector otherwise cuts lines short), thin strips are padded rather
-    than blown up by RapidOCR, and a strip dense enough to reach the
+    than blown up by the detector, and a strip dense enough to reach the
     detector's limit of 1000 candidate lines is read again without it.
     Off by default, so benchmark runs stay reproducible; the server and the
     command line turn it on.
@@ -244,33 +244,18 @@ class Ocr:
     TILE_ABOVE = 2200      # wider strips are tiled; the benchmark goes up to 2160 px
     TILE = 1920
     TILE_OVERLAP = 640
-    UPSCALE_BUDGET = 8e6   # detector pixels; RapidOCR scales the short side up to 736
+    UPSCALE_BUDGET = 8e6   # detector pixels; the detector scales the short side up to 736
     DENSE = 500            # this many lines in one strip: it may have hit the limit
 
     def __init__(self, models="v6-small", strip_height=1600, strip_overlap=200, contrast_pass=False,
                  device="cpu", threads=None, faint_pass=False, merged_view=None, gate_second_read=False,
                  size_guard=False, pdf_forms=False):
-        from rapidocr import RapidOCR
-        from rapidocr.utils.typings import LangDet, LangRec, ModelType, OCRVersion
+        from .ocr_native import NativeOCR
+        from .ocr_opencv import CHARACTERS
         if models not in MODEL_SETS or device != "cpu":
             raise ValueError("OpenCV OCR supports only the bundled v6-small models on CPU.")
-        (dv, ds, dl), (rv, rs, rl) = MODEL_SETS[models]
         self.models = models
-        # Thread limits belong to the worker/CLI, not individual sessions.
-        self.engine = RapidOCR(session_factory=OpenCVSession, params={
-            "Global.use_cls": False,
-            # Our own strips keep tall screenshots at full resolution, so the
-            # library must not shrink them again.
-            "Global.max_side_len": 100000,
-            "Global.log_level": "error",
-            # A lower box threshold than the default 0.5 keeps faint or
-            # tightly spaced lines (a blue underlined link under a long line,
-            # for one). Extra boxes cost a little time; text that is not an
-            # address is ignored anyway.
-            "Det.box_thresh": 0.3,
-            "Det.ocr_version": OCRVersion(dv), "Det.model_type": ModelType(ds), "Det.lang_type": LangDet(dl),
-            "Rec.ocr_version": OCRVersion(rv), "Rec.model_type": ModelType(rs), "Rec.lang_type": LangRec(rl),
-        })
+        self.engine = NativeOCR(Path(__file__).resolve().parents[1] / "models", CHARACTERS)
         self.strip_height = strip_height
         self.strip_overlap = strip_overlap
         self.contrast_pass = contrast_pass
@@ -336,7 +321,7 @@ class Ocr:
     def _detect(self, rgb, y_offset):
         h, w = rgb.shape[:2]
         if self.size_guard and min(h, w) < 736 and h * w * (736 / min(h, w)) ** 2 > self.UPSCALE_BUDGET:
-            # RapidOCR would scale a thin strip up until its short side is
+            # The detector would scale a thin strip up until its short side is
             # 736 px, which for a 1x800 image means gigabytes. Pad it to that
             # size with its border colour instead; the text keeps its scale.
             rgb = _pad_to(rgb, max(h, 736), max(w, 736))
@@ -344,7 +329,7 @@ class Ocr:
         result = self.engine(bgr, use_det=True, use_cls=False, use_rec=False)
         post = getattr(getattr(self.engine, "text_det", None), "postprocess_op", None)
         if self.size_guard and result.boxes is not None and len(result.boxes) >= self.DENSE and post is not None:
-            # RapidOCR keeps at most 1000 candidate regions per call, so rows
+            # The detector keeps at most 1000 candidate regions per call, so rows
             # of a dense table can be dropped. Read this strip again without
             # that limit. (Raising it everywhere changes results on noisy
             # low-contrast images, so it is only lifted where it matters.)

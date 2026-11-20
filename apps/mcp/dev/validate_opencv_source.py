@@ -123,9 +123,7 @@ def validate(work):
         # Retain this explicit packaging difference rather than inventing metadata.
         check = subprocess.run([str(python), "-m", "pip", "check"], cwd=work, text=True, capture_output=True)
         report["pip_check_after_source_install"] = {"exit_code": check.returncode, "output": check.stdout + check.stderr}
-        assert check.returncode == 1
-        assert all("requires opencv-python-headless, which is not installed" in line
-                   for line in check.stdout.splitlines() if line.strip()), check.stdout
+        assert check.returncode == 0, check.stdout + check.stderr
         source_env = {"OPENCV_BV_SOURCE_BUILD": str(environment)}
         run([python, extracted / "scripts/smoke_mcp.py", "--fixtures", extracted / "tests/fixtures"],
             cwd=work, env=source_env, timeout=300)

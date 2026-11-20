@@ -1,0 +1,54 @@
+name: MCP PDFium source validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [mcp-vision-tools]
+    paths:
+      - '3rdparty/pdfium/**'
+      - 'apps/mcp/native/pdfium-source*'
+      - 'apps/mcp/native/pdfium-source-notices/**'
+      - 'apps/mcp/native/build_backend.py'
+      - 'apps/mcp/setup.py'
+      - 'apps/mcp/pyproject.toml'
+      - 'apps/mcp/src/opencv_bv_tools/runtime/pdfium_native.py'
+      - 'apps/mcp/src/opencv_bv_tools/runtime/pdf_redact.py'
+      - 'apps/mcp/dev/verify_source_pdfium_wheel.py'
+      - 'apps/mcp/scripts/smoke_mcp.py'
+      - 'apps/mcp/tests/fixtures/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/mcp-pdfium-source.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  pdfium-source:
+    if: ${{ github.repository == 'nitin-singh12/opencv' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Prepare pinned PDFium source and tools
+        run: bash 3rdparty/pdfium/prepare-linux.sh "$RUNNER_TEMP/pdfium-work"
+      - name: Build PDFium through OpenCV CMake
+        run: |
+          cmake -S . -B "$RUNNER_TEMP/opencv-pdfium" -DBUILD_LIST=core -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_MCP_PDFIUM=ON -DMCP_PDFIUM_SOURCE_DIR="$RUNNER_TEMP/pdfium-work/pdfium"
+          cmake --build "$RUNNER_TEMP/opencv-pdfium" --target opencv_mcp_pdfium
+      - name: Build and verify source-built wheel
+        working-directory: apps/mcp
+        env:
+          OPENCV_MCP_PDFIUM_SOURCE_LIBRARY: ${{ runner.temp }}/opencv-pdfium/3rdparty/pdfium-gn/libpdfium.so
+        run: |
+          python -m pip install 'build==1.6.1' 'setuptools==84.2.1' 'wheel==0.45.1' 'nanobind==2.11.0' 'cmake>=3.21,<4'
+          python -m build --wheel --no-isolation --outdir "$RUNNER_TEMP/pdfium-wheel"
+          python dev/verify_source_pdfium_wheel.py "$RUNNER_TEMP"/pdfium-wheel/*.whl
+          python -m venv "$RUNNER_TEMP/pdfium-install"
+          "$RUNNER_TEMP/pdfium-install/bin/python" -m pip install "$RUNNER_TEMP"/pdfium-wheel/*.whl 'opencv-python-headless==5.0.0.93'
+          "$RUNNER_TEMP/pdfium-install/bin/python" -I -c "import hashlib,pathlib; from opencv_bv_tools.runtime import pdfium_native as p; assert hashlib.sha256(pathlib.Path(p.lib._name).read_bytes()).hexdigest() == '2921cd65e4cace07d21b14a8a026bdeec506ccea95d4fcae3dd830f66a661601'"
+          "$RUNNER_TEMP/pdfium-install/bin/python" -I scripts/smoke_mcp.py --fixtures "$GITHUB_WORKSPACE/apps/mcp/tests/fixtures"

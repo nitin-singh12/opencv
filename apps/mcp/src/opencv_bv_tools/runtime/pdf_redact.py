@@ -38,8 +38,8 @@ import cv2
 import numpy as np
 from .image_io import encode as encode_image
 
-import pypdfium2 as pdfium
-import pypdfium2.raw as pdfium_c
+from . import pdfium_native as pdfium
+from . import pdfium_native as pdfium_c
 
 if __package__:
     from . import image_redact as sr

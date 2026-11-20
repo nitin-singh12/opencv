@@ -108,8 +108,12 @@ class ToolContext:
     def require(self, extra, *modules):
         missing = [name for name in modules if importlib.util.find_spec(name) is None]
         if missing:
-            alternative = "" if extra == "mupdf" else " or opencv-bv-tools[all]"
-            raise ToolError(f"This tool needs the '{extra}' dependencies. Install opencv-bv-tools[{extra}] "
+            if "cv2" in missing:
+                raise ToolError(f"This tool needs OpenCV and the '{extra}' dependencies. Install "
+                                f"opencv-bv-tools[wheel] and opencv-bv-tools[{extra}], or use a "
+                                "compatible OpenCV source build; then restart the server.")
+            alternative = "" if extra == "mupdf" else " or opencv-bv-tools[all,wheel]"
+            raise ToolError(f"This tool needs the '{extra}' dependencies. Install opencv-bv-tools[{extra}]"
                             f"{alternative}, then restart the server.")
 
     def cancelled(self):
