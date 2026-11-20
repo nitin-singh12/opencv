@@ -191,9 +191,17 @@ class OCRProcess:
 
     def _expire(self, generation):
         with self._lock:
-            if (generation == self._generation and self._idle_deadline is not None
-                    and time.monotonic() >= self._idle_deadline):
+            if generation != self._generation or self._idle_deadline is None:
+                return
+            remaining = self._idle_deadline - time.monotonic()
+            if remaining <= 0:
                 self._stop_locked()
+            else:
+                # A timer can wake before the monotonic deadline, especially
+                # on platforms with different timer and clock resolutions.
+                self._timer = threading.Timer(remaining, self._expire, (generation,))
+                self._timer.daemon = True
+                self._timer.start()
 
     def _schedule_idle_locked(self):
         self._generation += 1

@@ -10,6 +10,7 @@ import subprocess
 import sys
 import threading
 import time
+from types import SimpleNamespace
 
 from PIL import Image
 import psutil
@@ -88,6 +89,39 @@ def test_reuses_worker_then_reaps_idle_and_restarts(fake):
     assert not psutil.pid_exists(first["pid"])
     third, _ = request(fake)
     assert third["pid"] != first["pid"]
+
+
+def test_idle_timer_preserves_deadline_after_early_wakes(fake, monkeypatch):
+    from opencv_bv_tools.runtime import ocr_process
+
+    timers = []
+    class Timer:
+        def __init__(self, delay, callback, args):
+            self.delay, self.callback, self.args = delay, callback, args
+            self.cancelled = False
+            timers.append(self)
+        def start(self):
+            pass
+        def cancel(self):
+            self.cancelled = True
+
+    clock = SimpleNamespace(now=9.0)
+    monkeypatch.setattr(ocr_process, "time", SimpleNamespace(monotonic=lambda: clock.now))
+    monkeypatch.setattr(ocr_process.threading, "Timer", Timer)
+    fake._generation = 5
+    fake._idle_deadline = 10.0
+    fake._expire(5)
+    assert timers[-1].delay == 1.0 and timers[-1].daemon
+    clock.now = 9.5
+    fake._expire(5)
+    assert timers[-1].delay == 0.5
+    assert fake._idle_deadline == 10.0 and fake._generation == 5
+    active = fake._timer
+    fake._expire(4)
+    assert fake._timer is active
+    clock.now = 10.0
+    fake._expire(5)
+    assert fake._idle_deadline is None and active.cancelled
 
 
 def test_stale_idle_callback_cannot_kill_active_request(fake):
