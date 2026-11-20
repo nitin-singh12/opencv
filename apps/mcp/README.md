@@ -91,6 +91,26 @@ prepare client connection settings.
 
 ## Set up an installed wheel
 
+Experimental Python 3.12 test wheels have been built for Linux x86-64 (tested
+on Ubuntu 22.04), Windows x64 (tested on Windows Server 2022), and Apple Silicon
+macOS (wheel requires macOS 13 or later; tested on macOS 15). They are not yet
+an official release. Repository maintainers can inspect the draft under
+[GitHub releases](https://github.com/nitin-singh12/opencv/releases); draft
+downloads are not publicly available. Verify the matching `.sha256` file.
+
+For a downloaded wheel, this example uses the Linux filename from its download
+directory. Replace the name with the actual wheel for your platform:
+
+```bash
+python -m pip install --only-binary=:all: './opencv_bv_tools-0.10.0.dev6-cp312-cp312-linux_x86_64.whl[wheel]'
+opencv-bv-setup
+```
+
+`--only-binary=:all:` requires prebuilt dependencies and prevents pip from
+compiling them. Internet is still needed to download any dependencies that are
+not installed. The Linux `linux_x86_64` wheel is not a manylinux wheel and is
+not verified on every Linux distribution.
+
 The package has not been published to PyPI. For a prepared platform-specific
 wheel, replace the path below with its actual absolute filename (Python 3.12):
 
