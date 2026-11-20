@@ -41,6 +41,7 @@ all = ["mcp==2.3.0"]
 
 [project.scripts]
 opencv-bv-mcp = "opencv_bv_tools.server:main"
+opencv-bv-setup = "opencv_bv_tools.client_setup:main"
 opencv-bv-convert = "opencv_bv_tools.image_conversion:main"
 opencv-bv-qr = "opencv_bv_tools.qr_reader:main"
 opencv-bv-barcode = "opencv_bv_tools.barcode_reader:main"

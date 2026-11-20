@@ -7,6 +7,7 @@ recursive-include .zxing-vendor *
 
 include native/CMakeLists.txt
 include native/build_backend.py
+include scripts/install_mcp.py
 
 include native/pdfium-manifest.json
 include native/pdfium-source-manifest.json

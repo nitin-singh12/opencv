@@ -174,7 +174,7 @@ def validate(work, prepare_only=False, unpublished=False):
             shutil.copyfile(ROOT / "pyproject.toml", extracted / "pyproject.toml")
             (extracted / "dist").mkdir()
             shutil.copyfile(wheel, extracted / "dist" / wheel.name)
-            run([installed, "-m", "pytest", "-q", "-ra", "tests/test_install_mcp.py",
+            run([installed, "-m", "pytest", "-q", "-ra", "tests/test_install_mcp.py", "tests/test_client_setup.py",
                  "tests/test_native_runtime.py", "tests/test_ocr_process.py", "tests/test_ocr_opencv.py",
                  "tests/test_ocr_model_loading.py",
                  "tests/test_unified_protocol.py",

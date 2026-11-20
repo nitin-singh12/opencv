@@ -89,6 +89,35 @@ Use Python 3.12 in an isolated environment. This command installs the package;
 the provided installer additionally runs the nine-tool smoke check and can
 prepare client connection settings.
 
+## Set up an installed wheel
+
+The package has not been published to PyPI. For a prepared platform-specific
+wheel, replace the path below with its actual absolute filename (Python 3.12):
+
+```bash
+python -m pip install '/absolute/path/to/opencv_bv_tools-0.10.0.dev6-PLATFORM.whl[wheel]'
+opencv-bv-setup
+```
+
+On Windows use `py -3.12 -m pip` and the actual Windows wheel path. The setup
+command asks for Codex, Claude Code, or another local MCP client, then asks
+which folders the server may access. It registers Codex or Claude Code using
+their CLI, or prints a local stdio configuration for another client. Reconnect
+the client after setup. It does not configure Claude Desktop chat automatically.
+
+For noninteractive setup, for example:
+
+```bash
+opencv-bv-setup --client codex --allow-dir /absolute/path/to/input --allow-dir /absolute/path/to/output
+```
+
+Folders must already exist. Use `--allow-any-path` instead for access wherever
+the account and server file checks permit. A different existing registration
+is preserved unless `--replace` is explicitly given. The `[wheel]` extra
+installs the pinned OpenCV provider; source-built OpenCV users can omit it and
+install their compatible `cv2` separately. Do not install multiple OpenCV
+wheel variants in one environment.
+
 ## Install from source
 
 Use **Python 3.12**. The package is built separately for Linux x86-64,

@@ -12,6 +12,7 @@ import sys
 import sysconfig
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
+from setuptools.command.build_py import build_py
 from setuptools.command.bdist_wheel import bdist_wheel
 
 root = Path(__file__).resolve().parent
@@ -58,6 +59,15 @@ for name, digest in zxing_manifest["files"].items():
         if not destination.exists():
             shutil.copyfile(origin, destination)
     verify(destination, digest)
+
+
+class PackageBuild(build_py):
+    def run(self):
+        super().run()
+        # Share the installer's existing registration and access helpers with
+        # the installed setup command, without maintaining a second copy.
+        self.copy_file(str(root / "scripts" / "install_mcp.py"),
+                       str(Path(self.build_lib) / "opencv_bv_tools" / "_installation.py"))
 
 
 class NativeBuild(build_ext):
@@ -205,7 +215,7 @@ class NativeWheel(bdist_wheel):
         super().run()
 
 
-setup(cmdclass={"build_ext": NativeBuild, "bdist_wheel": NativeWheel}, ext_modules=[
+setup(cmdclass={"build_py": PackageBuild, "build_ext": NativeBuild, "bdist_wheel": NativeWheel}, ext_modules=[
     Extension("opencv_bv_tools._clipper_native",
               sources=["native/clipper_module.cpp", ".clipper-vendor/clipper.cpp"],
               include_dirs=[".clipper-vendor"], language="c++"),
