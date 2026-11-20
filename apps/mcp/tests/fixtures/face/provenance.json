@@ -1,0 +1,35 @@
+{
+  "opencv_zoo_commit": "48b10fa505aeb51fbd127fc60a5c660040e823b7",
+  "files": [
+    {
+      "name": "face_detection_yunet_2026may.onnx",
+      "url": "https://media.githubusercontent.com/media/opencv/opencv_zoo/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/face_detection_yunet/face_detection_yunet_2026may.onnx",
+      "size": 229738,
+      "sha256": "ebafce4e3c118d6554634be5c27ab333b4c047a9a8c3faf1d7cf93101c22f0f0"
+    },
+    {
+      "name": "YUNET-LICENSE",
+      "url": "https://raw.githubusercontent.com/opencv/opencv_zoo/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/face_detection_yunet/LICENSE",
+      "size": 1085,
+      "sha256": "c83b8120c50ccbd4c4f96edf53141bdd566ebb8f8e9227e415326aa1b1aba958"
+    },
+    {
+      "name": "astronaut.png",
+      "url": "https://raw.githubusercontent.com/scikit-image/scikit-image/v0.25.2/skimage/data/astronaut.png",
+      "size": 791555,
+      "sha256": "88431cd9653ccd539741b555fb0a46b61558b301d4110412b5bc28b5e3ea6cb5"
+    },
+    {
+      "name": "camera.png",
+      "url": "https://raw.githubusercontent.com/scikit-image/scikit-image/v0.25.2/skimage/data/camera.png",
+      "size": 139512,
+      "sha256": "b0793d2adda0fa6ae899c03989482bff9a42d3d5690fc7e3648f2795d730c23a"
+    },
+    {
+      "name": "grace_hopper.jpg",
+      "url": "https://raw.githubusercontent.com/matplotlib/matplotlib/v3.10.7/lib/matplotlib/mpl-data/sample_data/grace_hopper.jpg",
+      "size": 61306,
+      "sha256": "a8ca6d734765703b09728ab47fe59f473d93ae3967fc24c7c0288c3c7adb7130"
+    }
+  ]
+}

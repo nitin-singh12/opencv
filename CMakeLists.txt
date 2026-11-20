@@ -448,6 +448,9 @@ OCV_OPTION(WITH_ZLIB_NG "Use zlib-ng instead of zlib" OFF
 # ===================================================
 OCV_OPTION(BUILD_SHARED_LIBS        "Build shared libraries (.dll/.so) instead of static ones (.lib/.a)" NOT (ANDROID OR APPLE_FRAMEWORK) )
 OCV_OPTION(BUILD_opencv_apps        "Build utility applications (used for example to train classifiers)" (NOT ANDROID AND NOT WINRT) IF (NOT APPLE_FRAMEWORK) )
+OCV_OPTION(BUILD_MCP_CLIPPER "Build the optional Clipper library used by the MCP OCR application" OFF)
+OCV_OPTION(BUILD_MCP_ZXING "Build the optional ZXing decoder used by the MCP application" OFF)
+OCV_OPTION(BUILD_MCP_PDFIUM "Enable the experimental PDFium source-build target for the MCP application" OFF)
 OCV_OPTION(BUILD_opencv_js          "Build JavaScript bindings by Emscripten" OFF )
 OCV_OPTION(BUILD_ANDROID_PROJECTS   "Build Android projects providing .apk files" ON  IF ANDROID )
 OCV_OPTION(BUILD_ANDROID_EXAMPLES   "Build examples for Android platform"         ON  IF ANDROID )
@@ -1067,6 +1070,18 @@ add_subdirectory(docs_sphinx)
 
 # various data that is used by cv libraries and/or demo applications.
 # add_subdirectory(data)
+
+# Optional third-party target for the MCP OCR application. Python wheels build
+# their own extension from the same source and do not require this target.
+if(BUILD_MCP_CLIPPER)
+  add_subdirectory(3rdparty/clipper)
+endif()
+if(BUILD_MCP_ZXING)
+  add_subdirectory(3rdparty/zxing-integration)
+endif()
+if(BUILD_MCP_PDFIUM)
+  add_subdirectory(3rdparty/pdfium)
+endif()
 
 # extra applications
 if(BUILD_opencv_apps)

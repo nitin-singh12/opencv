@@ -1,0 +1,29 @@
+{
+  "linux-x86_64": {
+    "binary": "libpdfium.so",
+    "binary_sha256": "2921cd65e4cace07d21b14a8a026bdeec506ccea95d4fcae3dd830f66a661601",
+    "licenses": {
+      "abseil.txt": "c79a7fea0e3cac04cd43f20e7b648e5a0ff8fa5344e644b0ee09ca1162b62747",
+      "agg23.txt": "c110d3ea2ad77467ce0dcff7d3337e6c8be8049a5103f4b9bd5fd911a77972e5",
+      "dragonbox-apache.txt": "9e45e856bedccee9f67254082ca11851d954de2fed7448c4bed19ad9aab99a91",
+      "dragonbox-boost.txt": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+      "fast_float.txt": "e562f3f974ced7e69dd1db77b820b36bcf8f30377f1aa105723fba449c53c4e6",
+      "freetype.txt": "f4b133e25df1f86ad3ffea453aa0e613f0474f34778dbbb3e437e7b2724937d8",
+      "harfbuzz.txt": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64",
+      "icu.txt": "e55522d81edc687a341a4411e0776e54ca654e90147f354a90458aaced4116af",
+      "lcms.txt": "7312b68c5b25e9bf2b828706fb4e29588f22705112f411fd42e1f7d84c3d139a",
+      "libcxx.txt": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
+      "libcxxabi.txt": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+      "libjpeg_turbo.ijg": "75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6",
+      "libjpeg_turbo.md": "96f5b328adbb78eeaaec6980d73fd558cb1e4d62560ed615646bc3cf5e532430",
+      "libopenjpeg.txt": "c5ab0890a737c2dfa7ba675036554f6d17741d98629b0c2a145354d00617e6b2",
+      "libpng.txt": "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526",
+      "llvm-libc.txt": "ebcd9bbf783a73d05c53ba4d586b8d5813dcdf3bbec50265860ccc885e606f47",
+      "nasm.txt": "7436a7c46b6e4d969b41e1ce387885ae4ced25710662189ff2983665253729ac",
+      "pdfium-binaries.txt": "493abc10084b58f97dce3fac1654624e1a25788f17180fe8925786c266cd2416",
+      "pdfium.txt": "961eacd9633fff6d051db7208b755e9210e30efac7adec3e6a6d52798f0ccf0e",
+      "simdutf.txt": "fc8dbc04e03ad4efc08a647ffe7f995b811a95bc04c0e85a56d5277c6593fa5f",
+      "zlib.txt": "33fd641c9f3b0e0be64bc78fea9e94807674cdd70c48477599226cb8956565fe"
+    }
+  }
+}

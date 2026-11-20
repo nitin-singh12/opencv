@@ -1,0 +1,9 @@
+LicenseRef-PDFium-Bundled-Notices identifies the combined notices for the
+PDFium binary and native components included in this development wheel.
+
+The exact platform-specific texts are included with the wheel under
+opencv_bv_tools/_native/pdfium_notices/, including the PDFium, FreeType,
+Unicode/ICU, JPEG, PNG, zlib and other component notices. The source-wheel
+and individual notice hashes are recorded in native/pdfium-manifest.json
+in the source distribution. A full release licence review is still required;
+this reference does not select among any alternative terms in those notices.

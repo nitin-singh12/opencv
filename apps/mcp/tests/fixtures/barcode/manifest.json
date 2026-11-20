@@ -1,0 +1,257 @@
+[
+  {
+    "id": "code39ext",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "code39ext",
+      "text": "abc",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "6f0b159196ab05745355b99afec3a01e5cb42f14440c1cdc0fdac65e60f8936b"
+  },
+  {
+    "id": "ean_addon",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "ean13",
+      "text": "5901234123457 12",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "e4d31948560d7293c67de3c76645495b32ae9feef42ac752ba7d7a6432a8d2ce"
+  },
+  {
+    "id": "gs1",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "gs1-128",
+      "text": "(01)09501101530003(10)ABC123(17)260101",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "e9c848362fcb8615e523301d1685da3e6b4e8234c02e5574d13533fb561a4b00"
+  },
+  {
+    "id": "datamatrix",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "datamatrix",
+      "text": "NOT-A-LINEAR-BARCODE",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "65dbc710cdb7859989836cc0e5e1c722e7ff75f271139cac680f990acb2efac0"
+  },
+  {
+    "id": "upce_0123450",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "0123450",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "f522f75736171a7ca35891540baa8b66b62c5f643fd883495079fe5dd26ef463"
+  },
+  {
+    "id": "upce_0123451",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "0123451",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "ee139b48966910e93dd240bb492a15157d9bcb92241bba0f2de6693c3d9668e0"
+  },
+  {
+    "id": "upce_0123452",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "0123452",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "88bbc61401d42bfd2ef96476704b0d481dfefd16b9482675cd0c0b8355917189"
+  },
+  {
+    "id": "upce_0123453",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "0123453",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "03e7b80a2bfa43c0c16a12bf12949c98a49e1bbf728d06997ed665c782bba98f"
+  },
+  {
+    "id": "upce_0123454",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "0123454",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "0d6ee36622dd48c4d03bd38fe4222de3b6e06c1646352cafe4da77177fca7985"
+  },
+  {
+    "id": "upce_0123455",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "0123455",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "809182c172f8c718994e99fa132b2ef517b2391015a274f9bf1ec4c9af93ca8b"
+  },
+  {
+    "id": "upce_0123456",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "0123456",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "2564f47826383d2a76a33dd8ee778f00f9e02affa1a247744dd50d9f3f10d231"
+  },
+  {
+    "id": "upce_0123457",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "0123457",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "3c63c6242383196e0bb3b1a1d835ed4cb59e7d8e47555dd053ceb6ccbf123406"
+  },
+  {
+    "id": "upce_0123458",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "0123458",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "6c16c601738d8942bc9f6d40cfbba87e3bdc8bc4d0195782c7ffdb6086f08bdb"
+  },
+  {
+    "id": "upce_0123459",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "0123459",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "d9adcd884d871b0ae9e1cb254dcf3c6e507543300751484230b953f47092913d"
+  },
+  {
+    "id": "upce_1123456",
+    "encoder": "bwip-js",
+    "version": "4.11.4 (2026-08-19)",
+    "bwipp_version": "2026-05-28",
+    "options": {
+      "bcid": "upce",
+      "text": "1123456",
+      "scale": 3,
+      "height": 15,
+      "paddingwidth": 12,
+      "paddingheight": 8,
+      "includetext": false,
+      "backgroundcolor": "FFFFFF"
+    },
+    "sha256": "4f76a31e9a1b00c913dfeab14a3849145b022a78dcde226fdd7af0a68226ca76"
+  }
+]

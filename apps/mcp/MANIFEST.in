@@ -1,0 +1,14 @@
+include native/clipper_module.cpp
+include .clipper-vendor/clipper.cpp
+include .clipper-vendor/clipper.hpp
+include .clipper-vendor/LICENSE.txt
+include native/zxing-source-manifest.json
+recursive-include .zxing-vendor *
+
+include native/CMakeLists.txt
+include native/build_backend.py
+include scripts/install_mcp.py
+
+include native/pdfium-manifest.json
+include native/pdfium-source-manifest.json
+recursive-include native/pdfium-source-notices *
