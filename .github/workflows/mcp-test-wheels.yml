@@ -1,0 +1,87 @@
+name: Build experimental MCP wheels
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: '1'
+  PYTHONNOUSERSITE: '1'
+  PYTHONUNBUFFERED: '1'
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  PIP_NO_CACHE_DIR: '1'
+  UV_NO_CACHE: '1'
+
+jobs:
+  draft:
+    if: ${{ github.repository == 'nitin-singh12/opencv' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      id: ${{ steps.create.outputs.id }}
+      url: ${{ steps.create.outputs.url }}
+    steps:
+      - id: create
+        name: Create a private draft for the tested commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="mcp-test-${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}"
+          gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
+            -f tag_name="$tag" -f target_commitish="$GITHUB_SHA" \
+            -f name="Experimental MCP test wheels ($tag)" \
+            -f body="Development test builds, not an official OpenCV or public release. Review platform scope, licensing and distribution before publishing. Each wheel is uploaded only after its native validation passes." \
+            -F draft=true -F prerelease=true > "$RUNNER_TEMP/release.json"
+          echo "id=$(jq -r .id "$RUNNER_TEMP/release.json")" >> "$GITHUB_OUTPUT"
+          echo "url=$(jq -r .html_url "$RUNNER_TEMP/release.json")" >> "$GITHUB_OUTPUT"
+
+  wheel:
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: x64
+          - runner: windows-2022
+            architecture: x64
+          - runner: macos-15
+            architecture: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - name: Preserve checkout line endings
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+          architecture: ${{ matrix.architecture }}
+      - name: Build and validate the exact wheel
+        shell: bash
+        run: python apps/mcp/dev/validate_package.py --work "$RUNNER_TEMP/mcp-wheel-validation"
+      - name: Verify checksum and retain wheel in draft
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.draft.outputs.id }}
+        run: |
+          set -euo pipefail
+          python apps/mcp/dev/retain_test_wheel.py "$RUNNER_TEMP/mcp-wheel-validation" "$RUNNER_TEMP/retained"
+          for file in "$RUNNER_TEMP"/retained/*; do
+            name=$(basename "$file")
+            gh api --method POST "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=$name" \
+              -H 'Content-Type: application/octet-stream' --input "$file" --silent
+          done
+          echo "Experimental wheel draft: ${{ needs.draft.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
