@@ -8,10 +8,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: mcp-validation-${{ github.ref }}
-  cancel-in-progress: false
-
 env:
   PYTHONUTF8: '1'
   PYTHONNOUSERSITE: '1'
@@ -68,6 +64,9 @@ jobs:
   source:
     needs: linux
     if: ${{ github.repository == 'nitin-singh12/opencv' && github.event.repository.private == false }}
+    concurrency:
+      group: mcp-source-${{ github.ref }}
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     steps:

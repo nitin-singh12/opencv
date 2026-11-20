@@ -85,7 +85,7 @@ def test_macos_native_binary_minimum_must_fit_wheel(tmp_path, output, accepted):
     if accepted:
         build.verify_macos_binaries()
         assert len(commands) == 3
-        assert all(command[1:3] == ['-verify_arch', 'arm64'] for command in commands)
+        assert all(command[2:] == ['-verify_arch', 'arm64'] for command in commands)
     else:
         with pytest.raises(RuntimeError, match='deployment version'):
             build.verify_macos_binaries()

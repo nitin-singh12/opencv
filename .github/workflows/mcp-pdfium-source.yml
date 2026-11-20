@@ -53,6 +53,10 @@ jobs:
             objcopy --dump-section "$section=$RUNNER_TEMP/pdfium-${section#.}" "$RUNNER_TEMP/pdfium-diagnostic.so"
             sha256sum "$RUNNER_TEMP/pdfium-${section#.}"
           done
+          if [ "$(sha256sum "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY" | cut -d' ' -f1)" != '2921cd65e4cace07d21b14a8a026bdeec506ccea95d4fcae3dd830f66a661601' ]; then
+            gzip -n -c "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY" | base64 -w 6000 | sed 's/^/PDFIUM_COMPARE:/'
+            printf '\n'
+          fi
           python -m pip install 'build==1.6.1' 'setuptools==84.2.1' 'wheel==0.45.1' 'nanobind==2.11.0' 'cmake>=3.21,<4'
           python -m build --wheel --no-isolation --outdir "$RUNNER_TEMP/pdfium-wheel"
           python dev/verify_source_pdfium_wheel.py "$RUNNER_TEMP"/pdfium-wheel/*.whl

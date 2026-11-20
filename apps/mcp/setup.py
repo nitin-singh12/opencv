@@ -79,7 +79,7 @@ class NativeBuild(build_ext):
         binaries = [Path(self.get_ext_fullpath(ext.name)) for ext in self.extensions]
         binaries.append(native_dir / "libpdfium.dylib")
         for binary in binaries:
-            subprocess.run(["/usr/bin/lipo", "-verify_arch", "arm64", str(binary)], check=True)
+            subprocess.run(["/usr/bin/lipo", str(binary), "-verify_arch", "arm64"], check=True)
             output = subprocess.check_output(["/usr/bin/otool", "-arch", "arm64", "-l", str(binary)], text=True)
             minimums = []
             for block in re.split(r"(?m)^\s*Load command \d+\s*$", output):
