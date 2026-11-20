@@ -48,6 +48,11 @@ jobs:
           test -f "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY"
           sha256sum "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY"
           readelf -n "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY" | head -n 20
+          cp "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY" "$RUNNER_TEMP/pdfium-diagnostic.so"
+          for section in .text .rodata .data .dynstr .dynsym; do
+            objcopy --dump-section "$section=$RUNNER_TEMP/pdfium-${section#.}" "$RUNNER_TEMP/pdfium-diagnostic.so"
+            sha256sum "$RUNNER_TEMP/pdfium-${section#.}"
+          done
           python -m pip install 'build==1.6.1' 'setuptools==84.2.1' 'wheel==0.45.1' 'nanobind==2.11.0' 'cmake>=3.21,<4'
           python -m build --wheel --no-isolation --outdir "$RUNNER_TEMP/pdfium-wheel"
           python dev/verify_source_pdfium_wheel.py "$RUNNER_TEMP"/pdfium-wheel/*.whl
