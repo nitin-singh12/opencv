@@ -8,7 +8,7 @@ The OpenCV build includes optional, disabled-by-default native targets for the
 bundled dependencies. This is not an official OpenCV release or an accepted
 upstream contribution.
 
-**Status:** experimental version `0.10.0.dev13`. The `mcp-prebuilt-wheels` and
+**Status:** experimental version `0.10.0.dev14`. The `mcp-prebuilt-wheels` and
 `mcp-source-install` branches support wheel and application-source testing.
 The RapidOCR-free and bundled PDFium implementations are experimental and are
 not a public release. An earlier Linux wheel passed 1,477 tests, with 26
@@ -27,6 +27,9 @@ Windows and macOS PDFium source builds remain unverified. See the
 for test scope and historical results.
 The Linux CI is configured to run selected feature regressions, including the full QR
 test suite, and the nine-tool smoke test.
+The face regression tests check detected blur regions against independently
+annotated face areas on three sample images. This is not a measurement of
+accuracy across all images or a guarantee of anonymity.
 Application code uses Apache-2.0; bundled models and dependencies retain their
 own terms. See [LICENSE](LICENSE) and [LICENSING.md](LICENSING.md).
 Source commits and imported file hashes are recorded in [PROVENANCE.json](PROVENANCE.json).
@@ -85,7 +88,7 @@ After extracting a prepared ZIP, users who prefer pip can install the local
 application wheel and resolve the other dependencies from their configured index:
 
 ```bash
-python -m pip install -c install-constraints.txt --find-links wheels 'opencv-bv-tools[all,wheel]==0.10.0.dev13'
+python -m pip install -c install-constraints.txt --find-links wheels 'opencv-bv-tools[all,wheel]==0.10.0.dev14'
 ```
 
 Use Python 3.12 in an isolated environment. This command installs the package;
@@ -105,7 +108,7 @@ For a downloaded wheel, this example uses the Linux filename from its download
 directory. Replace the name with the actual wheel for your platform:
 
 ```bash
-python -m pip install --only-binary=:all: './opencv_bv_tools-0.10.0.dev13-cp312-cp312-linux_x86_64.whl[wheel]'
+python -m pip install --only-binary=:all: './opencv_bv_tools-0.10.0.dev14-cp312-cp312-linux_x86_64.whl[wheel]'
 opencv-bv-setup
 ```
 
@@ -118,7 +121,7 @@ The package has not been published to PyPI. For a prepared platform-specific
 wheel, replace the path below with its actual absolute filename (Python 3.12):
 
 ```bash
-python -m pip install '/absolute/path/to/opencv_bv_tools-0.10.0.dev13-PLATFORM.whl[wheel]'
+python -m pip install '/absolute/path/to/opencv_bv_tools-0.10.0.dev14-PLATFORM.whl[wheel]'
 opencv-bv-setup
 ```
 
@@ -333,7 +336,7 @@ python3.12 -m venv .venv-dev
 .venv-dev/bin/python -m pip install -c install-constraints.txt '.[all,wheel,test,png-test,scanner-test,barcode-test,qr-test,face-test]'
 .venv-dev/bin/python -m pytest tests
 .venv-dev/bin/python -m build --wheel
-.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev13-cp312-cp312-linux_x86_64.whl --source-commit "$(git rev-parse HEAD)" --unpublished
+.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev14-cp312-cp312-linux_x86_64.whl --source-commit "$(git rev-parse HEAD)" --unpublished
 ```
 
 The wheel path above is an example for Linux x86-64 and Python 3.12; use the

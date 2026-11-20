@@ -38,9 +38,52 @@ def fake_success(monkeypatch):
     monkeypatch.setattr(worker,'detect_regions',lambda im,*args:([[0,0,im.shape[1]//2,im.shape[0]//2]],1))
 
 
+def assert_annotated_faces_blurred(source, output, regions, faces):
+    """Check the uncertainty-inset face area against the actual blur output."""
+    assert source.shape == output.shape
+    covered = np.zeros(source.shape[:2], dtype=bool)
+    for left, top, right, bottom in regions:
+        covered[top:bottom, left:right] = True
+    assert np.array_equal(source[~covered], output[~covered]), 'pixels outside blur regions changed'
+    for face in faces:
+        left, top, right, bottom = face['box']
+        uncertainty = face['approximate_boundary_uncertainty_pixels']
+        assert 0 <= left < right <= source.shape[1] and 0 <= top < bottom <= source.shape[0]
+        assert 0 <= uncertainty * 2 < min(right-left, bottom-top)
+        core = np.s_[top+uncertainty:bottom-uncertainty, left+uncertainty:right-uncertainty]
+        assert covered[core].all(), 'annotated face core is not fully covered'
+        before, after = source[core].astype(np.float32), output[core].astype(np.float32)
+        assert np.mean(np.abs(before-after)) >= 3, 'annotated face core was not meaningfully changed'
+        def detail(image):
+            return np.mean(np.diff(image, axis=0)**2) + np.mean(np.diff(image, axis=1)**2)
+        assert detail(after) < 0.5 * detail(before), 'annotated face core was not sufficiently blurred'
+
+
+def test_annotation_check_rejects_missed_or_unblurred_faces():
+    pixels = ((np.indices((16, 16)).sum(axis=0) % 2) * 255).astype(np.uint8)
+    source = np.repeat(pixels[:, :, None], 3, axis=2)
+    face = {'box': [2, 2, 14, 14], 'approximate_boundary_uncertainty_pixels': 2}
+    output = source.copy(); output[4:12, 4:12] = 127
+    assert_annotated_faces_blurred(source, output, [[4, 4, 12, 12]], [face])
+    with pytest.raises(AssertionError, match='not fully covered'):
+        assert_annotated_faces_blurred(source, source.copy(), [[0, 0, 3, 3]], [face])
+    with pytest.raises(AssertionError, match='not fully covered'):
+        assert_annotated_faces_blurred(source, source.copy(), [[4, 4, 11, 12]], [face])
+    with pytest.raises(AssertionError, match='not meaningfully changed'):
+        assert_annotated_faces_blurred(source, source.copy(), [[4, 4, 12, 12]], [face])
+    sharpened = source.copy(); sharpened[4:12, 4:12] = 255 - source[4:12, 4:12]
+    with pytest.raises(AssertionError, match='not sufficiently blurred'):
+        assert_annotated_faces_blurred(source, sharpened, [[4, 4, 12, 12]], [face])
+
+
 @pytest.mark.parametrize('name',['astronaut.png','camera.png','grace_hopper.jpg'])
 @pytest.mark.parametrize('fmt',['PNG','JPEG','WEBP'])
 def test_actual_cpu_inference_and_metadata_free_output(name,fmt):
+    annotations = json.loads((FIXTURES/'manual-annotations.json').read_text())
+    item = next(row for row in annotations['images'] if row['file'] == name)
+    assert hashlib.sha256((FIXTURES/name).read_bytes()).hexdigest() == item['sha256']
+    assert list(photo(name).size) == item['dimensions']
+    assert item['face_count'] == len(item['faces']) and item['face_count'] > 0
     data=encode(photo(name),fmt)
     result=api.blur_faces(data)
     assert result['status']=='blurred',result
@@ -50,6 +93,11 @@ def test_actual_cpu_inference_and_metadata_free_output(name,fmt):
     assert im.format=='PNG' and im.mode=='RGB' and im.size==photo(name).size
     assert not im.info and not im.getexif()
     assert result['output_sha256']==hashlib.sha256(result['data']).hexdigest()
+    assert result['image_size'] == item['dimensions']
+    assert result['coordinate_space'] == 'exif_normalized_image'
+    assert result['rectangle_semantics'] == 'left_top_right_bottom_half_open'
+    source,_ = worker.normalize(data, options()['limits'])
+    assert_annotated_faces_blurred(source, np.asarray(im), result['regions'], item['faces'])
 
 
 @pytest.mark.parametrize('orientation',range(1,9))
