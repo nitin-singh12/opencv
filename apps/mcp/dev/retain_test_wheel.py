@@ -23,7 +23,8 @@ def main(work, destination):
         raise ValueError("Validated commit does not match this workflow")
     destination.mkdir(parents=True, exist_ok=False)
     shutil.copyfile(wheel, destination / wheel.name)
-    (destination / f"{wheel.name}.sha256").write_text(f"{digest}  {wheel.name}\n", encoding="utf-8")
+    # SHA-256 files must have LF endings even when generated on Windows.
+    (destination / f"{wheel.name}.sha256").write_bytes(f"{digest}  {wheel.name}\n".encode("utf-8"))
     keys = ("commit", "status", "os", "architecture", "python", "runner_image",
             "image_version", "package_version", "wheel_sha256", "nine_tool_smoke", "native_contracts")
     summary = {key: report.get(key) for key in keys}

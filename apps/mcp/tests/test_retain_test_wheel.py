@@ -23,7 +23,7 @@ def test_only_successful_matching_wheel_is_retained(tmp_path, monkeypatch):
     output = tmp_path / "retained"
     retain.main(work, output)
     assert (output / wheel.name).read_bytes() == wheel.read_bytes()
-    assert (output / f"{wheel.name}.sha256").read_text() == f"{digest}  {wheel.name}\n"
+    assert (output / f"{wheel.name}.sha256").read_bytes() == f"{digest}  {wheel.name}\n".encode()
     wheel.write_bytes(b"different wheel")
     with pytest.raises(ValueError, match="checksum"):
         retain.main(work, tmp_path / "bad")
