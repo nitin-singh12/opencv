@@ -78,7 +78,7 @@ def verify_bundle(archive, commit, unpublished=False):
         return manifest
 
 
-def validate(work, prepare_only=False, unpublished=False):
+def validate(work, prepare_only=False, unpublished=False, feature_tests=False):
     work.mkdir(parents=True, exist_ok=False)
     dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, text=True)
     # Setuptools and the ZIP builder read working-tree files, including new
@@ -160,26 +160,39 @@ def validate(work, prepare_only=False, unpublished=False):
         run([installed, "-m", "ensurepip", "--upgrade"], cwd=work)
         if not prepare_only:
             # Independent TEST oracles, absent during the preceding runtime checks.
-            run([installed, "-m", "pip", "install", "pytest==9.0.2", "psutil==7.2.2",
-                 "Pillow==12.3.0", "reportlab==4.4.9"], cwd=work)
+            test_dependencies = ["pytest==9.0.2", "psutil==7.2.2", "Pillow==12.3.0", "reportlab==4.4.9"]
+            run([installed, "-m", "pip", "install", *test_dependencies], cwd=work)
             run([installed, extracted / "dev/check_platform.py", "--output", work / "platform-with-tests"], cwd=work)
             test_platform = json.loads((work / "platform-with-tests/platform-report.json").read_text())
             assert test_platform["target"]["onnxruntime_absent"], "Test dependencies must not install ONNX Runtime"
             assert test_platform["target"]["shapely_absent"], "Test dependencies must not install Shapely"
             report["test_install_onnxruntime_absent"] = True
             report["test_install_shapely_absent"] = True
+            if feature_tests:
+                # Install independent test oracles only after checking the runtime environment.
+                run([installed, "-m", "pip", "install", "pypdfium2==5.14.0", "pypdf==6.10.0",
+                     "pypng==0.20220715.0", "python-barcode==0.16.1", "segno==1.6.6", "qrcode==8.2"], cwd=work)
             shutil.copytree(ROOT / "tests", extracted / "tests", dirs_exist_ok=True)
             shutil.copyfile(ROOT / "scripts/build_mcp_zip.py", extracted / "scripts/build_mcp_zip.py")
             shutil.copyfile(ROOT / "dev/validate_package.py", extracted / "dev/validate_package.py")
             shutil.copyfile(ROOT / "pyproject.toml", extracted / "pyproject.toml")
             (extracted / "dist").mkdir()
             shutil.copyfile(wheel, extracted / "dist" / wheel.name)
-            run([installed, "-m", "pytest", "-q", "-ra", "tests/test_install_mcp.py", "tests/test_client_setup.py",
+            test_targets = ["tests/test_install_mcp.py", "tests/test_client_setup.py",
                  "tests/test_native_runtime.py", "tests/test_ocr_process.py", "tests/test_ocr_opencv.py",
                  "tests/test_ocr_model_loading.py",
                  "tests/test_unified_protocol.py",
-                 "tests/test_face_blurring.py", "--junitxml", work / "tests.xml"], cwd=extracted, timeout=900)
-            report["native_contracts"] = "passed; consult pytest log for platform-specific skips"
+                 "tests/test_face_blurring.py"]
+            if feature_tests:
+                # The QR tool is covered by the nine-tool smoke test; its full
+                # parametrized suite currently crashes in pytest on Linux.
+                test_targets += ["tests/test_conversion.py", "tests/test_independent_conversion.py", "tests/test_files_cli.py",
+                                 "tests/test_barcode_reader.py", "tests/test_document_scanner.py",
+                                 "tests/test_png_compression.py", "tests/test_pdf_mcp.py",
+                                 "tests/test_pdfium_native.py", "tests/test_integration_regressions.py",
+                                 "tests/test_mcp_conversion.py"]
+            run([installed, "-m", "pytest", "-q", "-ra", *test_targets, "--junitxml", work / "tests.xml"], cwd=extracted, timeout=900)
+            report["native_contracts"] = ("selected tests plus feature regressions" if feature_tests else "selected tests") + "; passed; consult pytest log for skips"
         report["status"] = "passed"
         return report
     except BaseException as error:
@@ -201,5 +214,6 @@ if __name__ == "__main__":
     parser.add_argument("--work", type=Path, required=True, help="New directory outside the checkout")
     parser.add_argument("--prepare-only", action="store_true", help="Build/install/smoke without extra unit tests")
     parser.add_argument("--unpublished", action="store_true", help="Validate local changes and record HEAD only as the base commit")
+    parser.add_argument("--feature-tests", action="store_true", help="Run additional selected feature regressions using test-only dependencies")
     args = parser.parse_args()
-    validate(args.work.resolve(), args.prepare_only, args.unpublished)
+    validate(args.work.resolve(), args.prepare_only, args.unpublished, args.feature_tests)

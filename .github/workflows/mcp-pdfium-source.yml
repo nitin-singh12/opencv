@@ -2,6 +2,21 @@ name: MCP PDFium source validation
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '3rdparty/pdfium/**'
+      - 'apps/mcp/native/pdfium-source*'
+      - 'apps/mcp/native/pdfium-source-notices/**'
+      - 'apps/mcp/native/build_backend.py'
+      - 'apps/mcp/setup.py'
+      - 'apps/mcp/pyproject.toml'
+      - 'apps/mcp/src/opencv_bv_tools/runtime/pdfium_native.py'
+      - 'apps/mcp/src/opencv_bv_tools/runtime/pdf_redact.py'
+      - 'apps/mcp/dev/verify_source_pdfium_wheel.py'
+      - 'apps/mcp/scripts/smoke_mcp.py'
+      - 'apps/mcp/tests/fixtures/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/mcp-pdfium-source.yml'
   push:
     branches: [mcp-vision-tools, mcp-prebuilt-wheels, mcp-source-install]
     paths:
@@ -24,7 +39,7 @@ permissions:
 
 jobs:
   pdfium-source:
-    if: ${{ github.repository == 'nitin-singh12/opencv' && github.event.repository.private == false }}
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     steps:

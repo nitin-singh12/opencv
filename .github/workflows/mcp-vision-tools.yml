@@ -1,6 +1,8 @@
 name: MCP native and source validation
 
 on:
+  pull_request:
+    paths: ['apps/mcp/**', '3rdparty/clipper/**', '3rdparty/pdfium/**', '3rdparty/zxing/**', '3rdparty/zxing-integration/**', 'CMakeLists.txt', '.github/workflows/mcp-vision-tools.yml']
   push:
     branches: [mcp-vision-tools, mcp-prebuilt-wheels, mcp-source-install]
     paths: ['apps/mcp/**', '3rdparty/clipper/**', '3rdparty/pdfium/**', '3rdparty/zxing/**', '3rdparty/zxing-integration/**', 'CMakeLists.txt', '.github/workflows/mcp-vision-tools.yml']
@@ -18,7 +20,7 @@ env:
 
 jobs:
   linux:
-    if: ${{ github.repository == 'nitin-singh12/opencv' && github.event.repository.private == false }}
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     outputs:
@@ -34,11 +36,11 @@ jobs:
         run: python -m unittest discover -s 3rdparty/pdfium -p 'test_*.py'
       - id: validate
         name: Build ZIP, clean install and native contracts
-        run: python apps/mcp/dev/validate_package.py --work "$RUNNER_TEMP/mcp-validation"
+        run: python apps/mcp/dev/validate_package.py --feature-tests --work "$RUNNER_TEMP/mcp-validation"
 
   native:
     needs: linux
-    if: ${{ github.repository == 'nitin-singh12/opencv' && github.event.repository.private == false }}
+    if: ${{ github.event.repository.private == false }}
     strategy:
       fail-fast: false
       matrix:
@@ -63,7 +65,7 @@ jobs:
 
   source:
     needs: linux
-    if: ${{ github.repository == 'nitin-singh12/opencv' && github.event.repository.private == false }}
+    if: ${{ github.event.repository.private == false }}
     concurrency:
       group: mcp-source-${{ github.ref }}
       cancel-in-progress: false

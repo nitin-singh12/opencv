@@ -240,6 +240,47 @@ def test_new_output_and_cancelled_publication(tmp_path):
     assert not list(folder.rglob("*.tmp"))
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX directory handle behavior")
+def test_output_folder_moved_before_temporary_file_is_created(tmp_path, monkeypatch):
+    allowed = tmp_path / "allowed"
+    folder = allowed / "output"
+    folder.mkdir(parents=True)
+    moved = tmp_path / "moved"
+    open_folder = safe_files._open_folder
+    def open_then_move(*args, **kwargs):
+        result = open_folder(*args, **kwargs)
+        folder.rename(moved)
+        return result
+    monkeypatch.setattr(safe_files, "_open_folder", open_then_move)
+    with pytest.raises(safe_files.UnsafePath, match="outside the folders"):
+        safe_files.write_file(b"new", folder / "result.png", safe_files.Folders([allowed]))
+    assert list(moved.iterdir()) == []
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX directory handle behavior")
+@pytest.mark.parametrize("overwrite", [False, True])
+def test_output_folder_moved_outside_allowlist_before_publish(tmp_path, overwrite):
+    allowed = tmp_path / "allowed"
+    allowed.mkdir()
+    folder = allowed / "output"
+    folder.mkdir()
+    moved = tmp_path / "moved"
+    output = folder / "result.png"
+    if overwrite:
+        output.write_bytes(b"original")
+
+    with pytest.raises(safe_files.UnsafePath, match="outside the folders"):
+        safe_files.write_file(b"new", output, safe_files.Folders([allowed]),
+                              overwrite=overwrite, before_publish=lambda: folder.rename(moved))
+
+    result = moved / "result.png"
+    if overwrite:
+        assert result.read_bytes() == b"original"
+    else:
+        assert not result.exists()
+    assert not list(moved.glob(".email-redact-*.tmp"))
+
+
 @WINDOWS
 @pytest.mark.parametrize("path", [r"C:relative.png", r"\\server\share\file.png",
                                   r"\\?\C:\file.png", r"C:\image.png:hidden",

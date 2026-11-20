@@ -7,10 +7,9 @@ server and the command line.
 Guarantees:
   - The input is never modified, through any name: same path, symbolic
     link or hard link (checked by device and inode, not by path).
-  - Only allowed folders are used. A path outside them is refused before
-    anything there is opened, and every check is repeated on what was
-    actually opened (a file or folder handle), so a path swapped between the
-    check and the use cannot redirect it. On Linux the input is first opened
+  - Folder paths are checked against the allowed list, including the opened
+    file or folder handle, subject to the concurrent-rename limit below.
+    On Linux the input is first opened
     with O_PATH, which cannot read and has no side effects, and is reopened
     for reading only after the checks pass.
   - Output is never written into an existing file. A new temporary file,
@@ -29,6 +28,10 @@ Limits: on file systems without hard links (FAT, exFAT) a new file is
 created directly under its final name (still never replacing anything), so
 a crash can leave it incomplete. If the process is killed outright while
 writing, a hidden .email-redact-*.tmp file can be left behind.
+On POSIX, folder checks cannot be atomic with a concurrent directory rename:
+an open directory can be moved after a check, including while writing a
+temporary file or just before publication. Folder restrictions are not a
+security boundary against local processes able to rename these directories.
 
 Linux is the tested platform; macOS uses F_GETPATH for the same checks.
 The Windows candidate uses windows_files.py: local NTFS plain paths, private
@@ -285,6 +288,7 @@ def write_file(data, path, folders, protect=(), overwrite=False, create_folders=
     tmp = f".email-redact-{secrets.token_hex(8)}.tmp"
     published = False
     try:
+        folders.check(_fd_path(dfd), f"The output folder {raw.parent}")
         old = _target(name, dfd, protect, overwrite)
         tfd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=dfd)
         try:
@@ -298,6 +302,9 @@ def write_file(data, path, folders, protect=(), overwrite=False, create_folders=
             written = identity(os.fstat(tfd))
         finally:
             os.close(tfd)
+        # A directory handle remains valid if another process moves its folder.
+        # Check again after potentially slow work, immediately before publishing.
+        folders.check(_fd_path(dfd), f"The output folder {raw.parent}")
         _target(name, dfd, protect, overwrite)  # again, right before publishing
         if overwrite:
             os.replace(tmp, name, src_dir_fd=dfd, dst_dir_fd=dfd)

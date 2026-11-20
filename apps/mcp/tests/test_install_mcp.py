@@ -199,6 +199,9 @@ def test_failed_stage_does_not_change_working_environment_or_registration(staged
 
 def test_success_promotes_then_reuses_checked_environment(staged_project, monkeypatch):
     root, old = staged_project
+    wheel = root / "package.whl"
+    wheel.write_bytes(b"test wheel")
+    monkeypatch.setattr(installer, "installation_source", lambda root: wheel)
     flags = ["--claude", "--codex", "--replace", "--allow-dir", str(root)]
     assert installer.main(flags, root=root) == 0
     new = (root / ".venv").resolve()
@@ -208,6 +211,23 @@ def test_success_promotes_then_reuses_checked_environment(staged_project, monkey
     monkeypatch.setattr(installer, "install_environment", forbidden)
     assert installer.main(flags, root=root) == 0
     assert (root / ".venv").resolve() == new
+
+
+def test_source_install_rebuilds_after_native_change(staged_project, monkeypatch):
+    root, _ = staged_project
+    original_install = installer.install_environment
+    calls = []
+    def install(*args):
+        calls.append(args)
+        return original_install(*args)
+    monkeypatch.setattr(installer, "install_environment", install)
+    flags = ["--install-only"]
+    assert installer.main(flags, root=root) == 0
+    native = root / "native" / "clipper.cpp"
+    native.parent.mkdir()
+    native.write_text("changed native code")
+    assert installer.main(flags, root=root) == 0
+    assert len(calls) == 2
 
 
 def test_registration_failure_reports_partial_state_without_promoting(staged_project, monkeypatch):

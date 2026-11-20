@@ -402,7 +402,10 @@ def main(argv=None, *, root=None):
             read_entry(client)  # Fail on invalid client configuration before installing.
         source = installation_source(root)
         expected = fingerprint(root, source, args.mupdf)
-        environment = installed_environment(root, expected)
+        # A source build can depend on native files and external build inputs
+        # beyond the package fingerprint. Rebuild it instead of reusing a
+        # potentially stale environment. Bundled wheels are content-hashed.
+        environment = installed_environment(root, expected) if source.is_file() else None
         if environment:
             print(f"Reusing checked environment: {environment}")
         else:
