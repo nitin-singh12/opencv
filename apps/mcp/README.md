@@ -99,6 +99,15 @@ python -m pip install '/absolute/path/to/opencv_bv_tools-0.10.0.dev6-PLATFORM.wh
 opencv-bv-setup
 ```
 
+For an experimental install directly from the public branch, this single pip
+command builds the package from source (Git, native build tools and internet
+access are required). This route has been tested on Linux x86-64:
+
+```bash
+python -m pip install 'opencv-bv-tools[wheel] @ git+https://github.com/nitin-singh12/opencv.git@mcp-vision-tools#subdirectory=apps/mcp'
+opencv-bv-setup
+```
+
 On Windows use `py -3.12 -m pip` and the actual Windows wheel path. The setup
 command asks for Codex, Claude Code, or another local MCP client, then asks
 which folders the server may access. It registers Codex or Claude Code using
