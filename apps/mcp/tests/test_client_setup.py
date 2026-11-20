@@ -39,7 +39,11 @@ def test_user_install_finds_user_script_directory(tmp_path, monkeypatch):
 
     user_site = tmp_path / "user site"
     scripts = tmp_path / "user scripts"
-    monkeypatch.setattr(client_setup, "__file__", str(user_site / "opencv_bv_tools" / "client_setup.py"))
+    monkeypatch.setattr(client_setup, "__file__", str(tmp_path / "checkout" / "src" / "opencv_bv_tools" / "client_setup.py"))
+    class Distribution:
+        def locate_file(self, path):
+            return user_site
+    monkeypatch.setattr(client_setup.importlib.metadata, "distribution", lambda name: Distribution())
     monkeypatch.setattr(client_setup.site, "getusersitepackages", lambda: str(user_site))
     monkeypatch.setattr(client_setup.sysconfig, "get_preferred_scheme", lambda kind: "user-scheme")
     monkeypatch.setattr(client_setup.sysconfig, "get_path", lambda name, scheme=None: str(scripts) if scheme == "user-scheme" else "wrong")
@@ -50,7 +54,10 @@ def test_user_install_finds_user_script_directory(tmp_path, monkeypatch):
 def test_virtual_environment_uses_python_scripts_directory(tmp_path, monkeypatch):
     from opencv_bv_tools import client_setup
 
-    monkeypatch.setattr(client_setup, "__file__", str(tmp_path / "env" / "site" / "opencv_bv_tools" / "client_setup.py"))
+    class Distribution:
+        def locate_file(self, path):
+            return tmp_path / "env" / "site"
+    monkeypatch.setattr(client_setup.importlib.metadata, "distribution", lambda name: Distribution())
     monkeypatch.setattr(client_setup.site, "getusersitepackages", lambda: str(tmp_path / "different-user-site"))
     monkeypatch.setattr(client_setup.sysconfig, "get_path", lambda name: str(tmp_path / "env" / "scripts"))
     expected = "opencv-bv-mcp.exe" if sys.platform == "win32" else "opencv-bv-mcp"

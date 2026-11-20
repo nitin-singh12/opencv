@@ -2,6 +2,7 @@
 """Connect an installed MCP server to a local client."""
 import argparse
 import importlib
+import importlib.metadata
 import importlib.util
 import json
 from pathlib import Path
@@ -13,7 +14,10 @@ import sysconfig
 
 def server_executable():
     """Use the Python environment's scripts directory, including user installs."""
-    package_root = Path(__file__).resolve().parent.parent
+    try:
+        package_root = Path(importlib.metadata.distribution("opencv-bv-tools").locate_file("")).resolve()
+    except importlib.metadata.PackageNotFoundError as exc:
+        raise ValueError("Install opencv-bv-tools before running setup.") from exc
     user_site = Path(site.getusersitepackages()).resolve()
     if package_root == user_site:
         scripts = sysconfig.get_path("scripts", scheme=sysconfig.get_preferred_scheme("user"))
