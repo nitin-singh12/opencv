@@ -9,19 +9,21 @@ bundled dependencies. This is not an official OpenCV release or an accepted
 upstream contribution.
 
 **Status:** experimental version `0.10.0.dev6` on `mcp-vision-tools`.
-The RapidOCR-free and bundled PDFium implementations are under evaluation. On Linux, an earlier prototype
-matched the previous implementation on 280 images and 49 PDFs (91 pages),
-including redacted output pixels. The integrated branch wheel also matched on
-a sample of nine images and three PDFs; its full Linux suite passed 1,461 tests
-with 26 Windows-only skips. The newer PDFium binding has been compared against
-91 real PDF pages and three end-to-end redaction samples on Linux. Windows/macOS
-validation of these changes remains pending. Do not treat this as a release.
-Email OCR uses OpenCV DNN on CPU. The preceding `0.10.0.dev2` Linux ZIP passed all
-nine MCP tools, and the full application suite passed 1,439 tests with 26
-Windows-only skips. On Linux, the previous Shapely-free candidate matched its predecessor
-on all 280 original image cases and 49 original PDF cases. Native
-platform results are tracked in the
-[validation notes](docs/lightweight-branch.md#native-and-source-validation).
+The RapidOCR-free and bundled PDFium implementations are experimental and are
+not a public release. On Linux, the installed wheel passed 1,477 tests, with 26
+Windows-only skips. A comparison against the previous implementation covered
+280 real images and 49 PDFs (91 pages) with matching results using the same
+OpenCV CPU configuration. Different OpenCV build configurations can change OCR
+text, so these results are not a guarantee for every build or image.
+
+On commit `418828a6bc`, clean package installation, nine-tool smoke tests and
+native contract checks passed on Linux x86-64, Windows x64 and macOS 15 arm64
+([CI results](https://github.com/nitin-singh12/opencv/actions/runs/44686125514)).
+The Linux PDFium source build through OpenCV CMake and its installed wheel check
+also passed ([CI results](https://github.com/nitin-singh12/opencv/actions/runs/44686125798)).
+Windows and macOS PDFium source builds remain unverified. See the
+[validation notes](docs/lightweight-branch.md#native-and-source-validation)
+for test scope and historical results.
 Application code uses Apache-2.0; bundled models and dependencies retain their
 own terms. See [LICENSE](LICENSE) and [LICENSING.md](LICENSING.md).
 Source commits and imported file hashes are recorded in [PROVENANCE.json](PROVENANCE.json).
@@ -89,16 +91,11 @@ prepare client connection settings.
 
 ## Install from source
 
-Use **Python 3.12**. Earlier native validation covered Linux x86-64, Windows x64
-and macOS arm64. Those results predate the OpenCV DNN OCR backend and do not
-establish acceptance of `0.10.0.dev6`. See the
-[validation results](docs/lightweight-branch.md#native-and-source-validation)
-for historical coverage and the new backend's pending checks.
-
-The native validation workflow is configured to build and test Linux x86-64,
-Windows x64 and Apple Silicon macOS with Python 3.12. Its Linux source job also
-compiles OpenCV. These jobs have not yet validated the current PDFium changes;
-consult individual job results before claiming platform support.
+Use **Python 3.12**. The package is built separately for Linux x86-64,
+Windows x64 and Apple Silicon macOS; a wheel from one platform cannot be used
+on another. The tested macOS package requires macOS 13 or newer. The Linux
+OpenCV source build is checked separately; source builds on Windows and macOS
+still need validation.
 
 From the repository root, enter `apps/mcp`. The two verified OCR model files
 and recognition dictionary are included in the application wheel. The server

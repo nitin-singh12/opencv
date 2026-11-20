@@ -11,8 +11,8 @@ on Linux. All 34 completed and independently matched decoded samples and
 non-IDAT metadata; output never grew relative to the input. Compared with the
 prior optimizer, output files were smaller in 20 cases, larger in 10 and equal
 in four. The earlier corpus contained 40 cases; this is not a held-out test or
-a claim that compression is always better. Native Windows/macOS testing of
-this change remains pending.
+a claim that compression is always better. Current Windows/macOS package
+checks are summarized below; the full 34-input comparison was Linux-only.
 
 The experimental no-RapidOCR candidate includes the two verified PP-OCRv6
 models and recognition dictionary directly in the application wheel. Its OCR
@@ -35,8 +35,7 @@ results and rendered redaction pixels. The integrated branch wheel separately
 matched nine images and three PDFs against the same baseline. The integrated
 branch's full Linux test suite passed 1,461 tests and 51 subtests, with 26
 Windows-only skips. These comparisons show parity on the tested cases, not
-perfect detection on every input. Native Windows and macOS validation remains
-pending for this change.
+perfect detection on every input. See the current native checks below.
 
 For the Shapely-free candidate, a fresh Linux installation passed all nine
 tools with Shapely and ONNX Runtime absent. The full application suite passed
@@ -124,6 +123,27 @@ The newer checks below distinguish reproduced environment failures from package
 defects. Earlier failed-run evidence is retained rather than removed.
 
 ## Native and source validation
+
+### Current integrated candidate
+
+On commit `418828a6bc`, clean ZIP installation, all nine MCP smoke tests and
+native contract tests passed on Linux x86-64, Windows Server 2022 x64 and
+macOS 15 arm64 with Python 3.12. See the
+[platform workflow](https://github.com/nitin-singh12/opencv/actions/runs/44686125514).
+These are targeted native checks, not the complete Linux real-input corpus on
+every operating system.
+
+The Linux PDFium 8076 source build through OpenCV CMake passed checksum
+verification, built a wheel and passed an installed nine-tool smoke test in the
+[PDFium workflow](https://github.com/nitin-singh12/opencv/actions/runs/44686125798).
+Windows/macOS PDFium source builds have not been validated.
+
+Locally on Linux, the installed wheel passed 1,477 tests, with 26 Windows-only
+skips and 51 subtests. With the same OpenCV CPU configuration, a source-built
+OpenCV comparison matched the reference on 280 real images and 49 PDFs (91
+pages). A build with IPP disabled produced different OCR text on some inputs;
+accuracy parity depends on the build configuration and tested data. These
+checks do not establish perfect detection for all inputs.
 
 ### OpenCV DNN backend: validation before Shapely removal
 
