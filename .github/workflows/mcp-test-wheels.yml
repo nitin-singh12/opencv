@@ -49,7 +49,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-24.04
+          - runner: ubuntu-22.04
             architecture: x64
           - runner: windows-2022
             architecture: x64
