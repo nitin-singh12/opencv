@@ -4,6 +4,7 @@ import json
 from importlib import metadata
 import os
 import platform
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -63,6 +64,35 @@ class NativeBuild(build_ext):
     def run(self):
         super().run()
         self.bundle_pdfium()
+        if sys.platform == "darwin":
+            self.verify_macos_binaries()
+
+    def verify_macos_binaries(self):
+        wheel = self.distribution.get_command_obj("bdist_wheel")
+        wheel.ensure_finalized()
+        tag = wheel.get_tag()[2]
+        match = re.fullmatch(r"macosx_(\d+)_(\d+)_arm64", tag)
+        if not match:
+            raise RuntimeError(f"Unsupported macOS wheel platform: {tag}")
+        wheel_minimum = tuple(map(int, match.groups()))
+        native_dir = ((root / "src") if self.inplace else Path(self.build_lib)) / "opencv_bv_tools" / "_native"
+        binaries = [Path(self.get_ext_fullpath(ext.name)) for ext in self.extensions]
+        binaries.append(native_dir / "libpdfium.dylib")
+        for binary in binaries:
+            subprocess.run(["/usr/bin/lipo", "-verify_arch", "arm64", str(binary)], check=True)
+            output = subprocess.check_output(["/usr/bin/otool", "-arch", "arm64", "-l", str(binary)], text=True)
+            minimums = []
+            for block in re.split(r"(?m)^\s*Load command \d+\s*$", output):
+                if "cmd LC_BUILD_VERSION" in block:
+                    minimum = re.search(r"(?m)^\s*minos\s+(\d+)\.(\d+)", block)
+                elif "cmd LC_VERSION_MIN_MACOSX" in block:
+                    minimum = re.search(r"(?m)^\s*version\s+(\d+)\.(\d+)", block)
+                else:
+                    continue
+                if minimum:
+                    minimums.append(tuple(map(int, minimum.groups())))
+            if not minimums or max(minimums) > wheel_minimum:
+                raise RuntimeError(f"macOS deployment version of {binary.name} is incompatible with {tag}")
 
     def bundle_pdfium(self):
         manifest = json.loads((root / "native" / "pdfium-manifest.json").read_text())
@@ -144,6 +174,16 @@ class NativeBuild(build_ext):
 
 
 class NativeWheel(bdist_wheel):
+    def get_tag(self):
+        interpreter, abi, wheel_platform = super().get_tag()
+        if sys.platform == "darwin" and platform.machine().lower() == "arm64":
+            match = re.fullmatch(r"macosx_(\d+)_(\d+)_(?:arm64|universal2)", wheel_platform)
+            if match:
+                # The pinned PDFium provider wheel requires macOS 13 or later.
+                major, minor = max(tuple(map(int, match.groups())), (13, 0))
+                wheel_platform = f"macosx_{major}_{minor}_arm64"
+        return interpreter, abi, wheel_platform
+
     def run(self):
         _, _, wheel_platform = self.get_tag()
         machine = platform.machine().lower()

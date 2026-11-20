@@ -45,6 +45,9 @@ jobs:
         env:
           OPENCV_MCP_PDFIUM_SOURCE_LIBRARY: ${{ runner.temp }}/opencv-pdfium/3rdparty/pdfium-gn/libpdfium.so
         run: |
+          test -f "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY"
+          sha256sum "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY"
+          readelf -n "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY" | head -n 20
           python -m pip install 'build==1.6.1' 'setuptools==84.2.1' 'wheel==0.45.1' 'nanobind==2.11.0' 'cmake>=3.21,<4'
           python -m build --wheel --no-isolation --outdir "$RUNNER_TEMP/pdfium-wheel"
           python dev/verify_source_pdfium_wheel.py "$RUNNER_TEMP"/pdfium-wheel/*.whl
