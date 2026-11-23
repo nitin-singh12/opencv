@@ -160,13 +160,15 @@ class NativeBuild(build_ext):
     def build_extension(self, ext):
         if ext.name != "opencv_bv_tools._native.zxingcpp":
             return super().build_extension(ext)
+        import cmake
         import nanobind
+        cmake_executable = str(Path(cmake.CMAKE_BIN_DIR) / ("cmake.exe" if sys.platform == "win32" else "cmake"))
         output = Path(self.get_ext_fullpath(ext.name)).resolve()
         build_dir = Path(self.build_temp).resolve() / "zxing"
         build_dir.mkdir(parents=True, exist_ok=True)
         config = "Debug" if self.debug else "Release"
         cmake_args = [
-            "cmake", "-S", str(root / "native"), "-B", str(build_dir),
+            cmake_executable, "-S", str(root / "native"), "-B", str(build_dir),
             f"-DZXING_SOURCE_DIR={zxing_staged}",
             f"-DCMAKE_BUILD_TYPE={config}", "-DCMAKE_CXX_STANDARD=20",
             "-DBUILD_SHARED_LIBS=OFF", "-DZXING_PYTHON_MODULE=ON",
@@ -182,7 +184,7 @@ class NativeBuild(build_ext):
                 raise RuntimeError("Unsupported macOS wheel platform")
             cmake_args.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={match.group(1)}.{match.group(2)}")
         subprocess.run(cmake_args, check=True)
-        subprocess.run(["cmake", "--build", str(build_dir), "--config", config,
+        subprocess.run([cmake_executable, "--build", str(build_dir), "--config", config,
                         "--target", "zxingcpp", "--parallel", "4"], check=True)
         candidates = [p for p in (build_dir / "bindings").rglob("zxingcpp*")
                       if p.suffix in {".so", ".pyd"}]

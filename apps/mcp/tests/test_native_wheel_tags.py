@@ -93,15 +93,17 @@ def test_macos_native_binary_minimum_must_fit_wheel(tmp_path, output, accepted):
             build.verify_macos_binaries()
 
 
-def test_macos_zxing_uses_wheel_deployment_target(tmp_path, monkeypatch):
+@pytest.mark.parametrize(('system', 'executable'), [('darwin', 'cmake'), ('win32', 'cmake.exe')])
+def test_zxing_uses_build_environment_cmake(tmp_path, monkeypatch, system, executable):
     path = Path(__file__).resolve().parents[1] / 'setup.py'
     tree = ast.parse(path.read_text())
     node = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'NativeBuild')
     commands = []
     monkeypatch.setitem(sys.modules, 'nanobind', SimpleNamespace(cmake_dir=lambda: '/nanobind'))
+    monkeypatch.setitem(sys.modules, 'cmake', SimpleNamespace(CMAKE_BIN_DIR=str(tmp_path / 'build environment/bin')))
     namespace = {'build_ext': object, 'Path': Path, 'root': tmp_path, 're': re,
                  'zxing_staged': tmp_path / 'zxing', 'shutil': shutil,
-                 'sys': SimpleNamespace(platform='darwin', executable='/python'),
+                 'sys': SimpleNamespace(platform=system, executable='/python'),
                  'subprocess': SimpleNamespace(run=lambda args, check: commands.append(args))}
     exec(compile(ast.Module(body=[node], type_ignores=[]), str(path), 'exec'), namespace)
     wheel = SimpleNamespace(ensure_finalized=lambda: None,
@@ -115,5 +117,6 @@ def test_macos_zxing_uses_wheel_deployment_target(tmp_path, monkeypatch):
     binding.parent.mkdir(parents=True)
     binding.write_bytes(b'example')
     build.build_extension(SimpleNamespace(name='opencv_bv_tools._native.zxingcpp'))
-    assert '-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0' in commands[0]
+    assert commands[0][0] == commands[1][0] == str(tmp_path / 'build environment/bin' / executable)
+    assert ('-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0' in commands[0]) == (system == 'darwin')
     assert (tmp_path / 'output/zxingcpp.so').read_bytes() == b'example'

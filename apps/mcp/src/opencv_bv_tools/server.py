@@ -40,7 +40,7 @@ def create_server(config: ServerConfig):
 
     server = MCPServer(
         name="opencv-bv-server",
-        version="0.10.0.dev14",
+        version="0.10.0.dev15",
         lifespan=lifespan,
         instructions=(
             "Local image tools with allowed-folder access and separate output files. "
