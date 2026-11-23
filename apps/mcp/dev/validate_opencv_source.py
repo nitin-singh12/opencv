@@ -121,7 +121,7 @@ def validate(work):
         run([python, "-I", "-c", "import cv2; print(cv2.__file__); print(cv2.getBuildInformation())"], cwd=work)
         # CMake installs a module, not an opencv-python-headless distribution.
         # Retain this explicit packaging difference rather than inventing metadata.
-        check = subprocess.run([str(python), "-m", "pip", "check"], cwd=work, text=True, capture_output=True)
+        check = subprocess.run([str(python), "-I", "-m", "pip", "check"], cwd=work, text=True, capture_output=True)
         report["pip_check_after_source_install"] = {"exit_code": check.returncode, "output": check.stdout + check.stderr}
         assert check.returncode == 0, check.stdout + check.stderr
         source_env = {"OPENCV_BV_SOURCE_BUILD": str(environment)}

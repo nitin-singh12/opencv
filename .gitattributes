@@ -94,3 +94,7 @@ org.eclipse.jdt.core.prefs -text whitespace=cr-at-eol merge=union
 *.vcxproj   text eol=crlf -whitespace merge=union
 
 *.sh        text eol=lf
+
+# Preserve the exact bytes and hashes of these third-party notices.
+/apps/mcp/docs/licenses/zxing-apache-license.txt -text whitespace=-blank-at-eof
+/apps/mcp/native/pdfium-source-notices/abseil.txt -text whitespace=-blank-at-eof
