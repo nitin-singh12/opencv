@@ -79,7 +79,7 @@ def test_recognizer_batches_widths_and_repeated_net():
     try:
         ocr = Ocr()
         from opencv_bv_tools.runtime import ocr_native as native
-        path = Path(backend.__file__).resolve().parents[1] / "models" / backend.MODELS["rec"][0]
+        path = backend.model_path(backend.MODELS["rec"][0])
         recognizer = native.Recognizer(path, backend.CHARACTERS)
         session = recognizer.session
         first = np.random.default_rng(20261112).standard_normal((1, 3, 48, 320)).astype(np.float32)

@@ -8,12 +8,12 @@ Third-party code, dependencies, model weights and externally sourced fixtures
 retain their own licences and attribution. They are not relicensed by the
 application's Apache-2.0 declaration. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-The application wheel includes third-party code and models, so its distribution
+The application wheel includes third-party code, so its distribution
 metadata declares `Apache-2.0 AND MIT AND BSL-1.0 AND BSD-3-Clause AND LicenseRef-PDFium-Bundled-Notices`. This describes the combined archive;
 it does not offer a choice of licence for each component. The full YuNet MIT
 notice remains beside the model and in the distribution's licence files.
 
-The bundled PP-OCRv6 model weights and recognition dictionary retain their
+The separately downloaded PP-OCRv6 model weights and bundled recognition dictionary retain their
 Apache-2.0 terms and attribution, with extraction provenance recorded at
 `opencv_bv_tools/models/ocr-provenance.json`. The unchanged upstream
 [model notice](docs/licenses/RAPIDOCR-MODEL-NOTICES.txt) is included in the
@@ -24,7 +24,7 @@ runtime dependencies retain their own notices.
 ## What this distribution contains
 
 The application wheel includes the Clipper and ZXing native extensions, the PDFium native library, nanobind
-binding code, the YuNet and PP-OCRv6 models, and their required notices. The ZIP
+binding code and model notices. Model weights are obtained separately. The ZIP
 adds installer scripts, documentation and smoke-test fixtures. Depending on how
 it is built, it may also include unmodified dependency wheels such as OpenCV,
 NumPy and MCP. Each included wheel retains its own notices.

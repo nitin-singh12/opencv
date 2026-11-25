@@ -253,9 +253,9 @@ class Ocr:
         from .ocr_native import NativeOCR
         from .ocr_opencv import CHARACTERS
         if models not in MODEL_SETS or device != "cpu":
-            raise ValueError("OpenCV OCR supports only the bundled v6-small models on CPU.")
+            raise ValueError("OpenCV OCR supports only the v6-small models on CPU.")
         self.models = models
-        self.engine = NativeOCR(Path(__file__).resolve().parents[1] / "models", CHARACTERS)
+        self.engine = NativeOCR(None, CHARACTERS)
         self.strip_height = strip_height
         self.strip_overlap = strip_overlap
         self.contrast_pass = contrast_pass
@@ -1024,7 +1024,7 @@ def main():
                     help="accurate also finds faint or colour-on-colour text; fast is about twice as fast on CPU")
     ap.add_argument("--threads", type=int, default=4, help="CPU threads to use (default 4)")
     ap.add_argument("--models", choices=sorted(MODEL_SETS), default="v6-small",
-                    help="bundled OCR models (no downloads)")
+                    help="locally installed OCR models (no downloads during inference)")
     args = ap.parse_args()
     anywhere = sf.Folders(None)
     try:

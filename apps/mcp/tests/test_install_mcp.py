@@ -243,7 +243,8 @@ def test_selfcheck_selects_requested_pdf_engine(tmp_path, monkeypatch):
     commands = []
     monkeypatch.setattr(installer, "run", lambda args, **kwargs: commands.append(args) or "{}")
     installer.check_environment(tmp_path, tmp_path / "environment", True)
-    assert commands[0][-2:] == ["--pdf-engine", "mupdf"]
+    assert commands[0][-2:] == ["-m", "opencv_bv_tools.model_assets"]
+    assert commands[1][-2:] == ["--pdf-engine", "mupdf"]
 
 
 @pytest.mark.parametrize("has_uv", [True, False])

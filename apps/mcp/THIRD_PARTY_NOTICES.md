@@ -1,6 +1,6 @@
 # Third-party notices
 
-This index describes dependencies and bundled assets for `0.10.0.dev15`. The
+This index describes dependencies and bundled assets for `0.10.0.dev16`. The
 application uses Apache-2.0; see [LICENSING.md](LICENSING.md). Preserve
 the full notices in each installed distribution, including native components.
 Headline licence names alone are not a complete redistribution review.
@@ -45,7 +45,7 @@ It supplements the previously inspected wheel that omitted its licence file and
 is retained as historical licensing material; its presence does not declare
 FlatBuffers a direct dependency of this version.
 
-## Bundled model and fixtures
+## Model assets and bundled fixtures
 
 - YuNet `face_detection_yunet_2026may.onnx`: MIT, copyright 2020 Shiqi Yu.
   The full [licence](docs/licenses/YUNET-LICENSE.txt) is also inside the application
@@ -54,7 +54,7 @@ FlatBuffers a direct dependency of this version.
   OpenCV Zoo source and hash. Model SHA-256:
   `ebafce4e3c118d6554634be5c27ab333b4c047a9a8c3faf1d7cf93101c22f0f0`.
 - The recognition dictionary at `opencv_bv_tools/models/ppocrv6-characters.txt`
-  is extracted from metadata in the exact bundled PP-OCRv6 small recognizer.
+  is extracted from metadata in the exact PP-OCRv6 small recognizer.
   It retains the Apache-2.0 model attribution to Baidu and/or the applicable
   PaddleOCR rights holders. Its source model and hash are recorded in the
   `opencv_bv_tools/models/ocr-provenance.json` in the application wheel.
@@ -78,8 +78,8 @@ The OCR preprocessing, detector postprocessing and recognition decoding in
 `opencv_bv_tools/runtime/ocr_native.py` include modified code from
 RapidOCR 3.10.0 and PaddleOCR. Their Apache-2.0 terms, original attribution and
 modification notice are retained in that file and this package's licence.
-The two PP-OCRv6 model files are distributed inside the application wheel. Their
-original [model notice](docs/licenses/RAPIDOCR-MODEL-NOTICES.txt), provenance
+The PP-OCRv6 model files are downloaded separately. Their original
+[model notice](docs/licenses/RAPIDOCR-MODEL-NOTICES.txt), provenance
 and hashes are included. The runtime no longer installs the RapidOCR package.
 
 ## Optional and development packages

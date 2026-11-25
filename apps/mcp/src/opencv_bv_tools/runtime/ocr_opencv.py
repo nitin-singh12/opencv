@@ -8,6 +8,7 @@ worker/CLI sets OpenCV's process-wide thread limit before constructing OCR.
 """
 import hashlib
 from pathlib import Path
+from opencv_bv_tools.model_assets import model_path
 
 
 MODELS = {
@@ -21,17 +22,18 @@ CHARACTER_COUNT = 18708
 
 def _verified_bytes(path, digest):
     try:
-        data = path.read_bytes()
+        with path.open("rb") as stream:
+            data = stream.read(32 * 1024 * 1024 + 1)
     except OSError:
         data = None
-    if data is None or hashlib.sha256(data).hexdigest() != digest:
-        raise RuntimeError(f"OCR asset {path.name} is missing or has changed. Reinstall the package.")
+    if data is None or len(data) > 32 * 1024 * 1024 or hashlib.sha256(data).hexdigest() != digest:
+        raise RuntimeError(f"OCR asset {path.name} is missing or has changed. Run opencv-bv-models or reinstall the package.")
     return data
 
 
 def _model_bytes(role):
     name, digest = MODELS[role]
-    path = Path(__file__).resolve().parents[1] / "models" / name
+    path = model_path(name)
     return _verified_bytes(path, digest)
 
 

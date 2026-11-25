@@ -37,7 +37,7 @@ PDF_ERRORS = {
     "pdf_failed": "PDF processing failed; no output was published.",
     "missing_pdf_dependency": "The selected PDF engine dependencies are not installed.",
     "ocr_initialization_failed": "OCR initialization failed.",
-    "model_verification_failed": "OCR model verification failed.",
+    "model_verification_failed": "OCR model verification failed. Run opencv-bv-models to install verified models.",
 }
 
 

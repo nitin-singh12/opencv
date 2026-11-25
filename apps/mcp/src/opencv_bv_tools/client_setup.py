@@ -5,6 +5,7 @@ import importlib
 import importlib.metadata
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import site
@@ -71,14 +72,19 @@ def main(argv=None):
         server = server_executable()
         if not server.is_file():
             raise installer.InstallError(f"The installed server command was not found: {server}")
+        if client != "other" and not shutil.which(client):
+            raise installer.InstallError(f"{client} was not found on PATH. Install it or select another client.")
+        from opencv_bv_tools.model_assets import install_models
+        print(f"Preparing verified models: {install_models()}")
         server_args = (["--allow-any-path"] if any_path else
                        [value for folder in folders for value in ("--allow-dir", folder)])
+        if os.environ.get("OPENCV_BV_MODEL_DIR"):
+            from opencv_bv_tools.model_assets import cache_directory
+            server_args += ["--model-dir", str(cache_directory().resolve())]
         if client == "other":
             print("Add this local stdio server configuration to your client:")
             print(json.dumps({"mcpServers": {installer.NAME: {"command": str(server), "args": server_args}}}, indent=2))
         else:
-            if not shutil.which(client):
-                raise installer.InstallError(f"{client} was not found on PATH. Install it or select another client.")
             installer.register(client, server, server_args, args.replace)
         print("Restart or reconnect your MCP client, then select opencv-bv-server.")
         return 0

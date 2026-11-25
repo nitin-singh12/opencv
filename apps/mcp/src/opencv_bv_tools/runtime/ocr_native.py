@@ -3,7 +3,7 @@
 # by SWHL / RapidOCR authors
 # (https://github.com/RapidAI/RapidOCR), derived from PaddleOCR.
 # Copyright (c) 2020 PaddlePaddle Authors. All rights reserved.
-# Modifications: use local OpenCV DNN inference and the bundled OCR models.
+# Modifications: use local OpenCV DNN inference and verified OCR models.
 # See LICENSE and THIRD_PARTY_NOTICES.md for licence and attribution.
 """PP-OCRv6 image preparation and decoding with OpenCV DNN.
 
@@ -381,10 +381,16 @@ class Recognizer:
 class NativeOCR:
     """Load detection and recognition models only when each is first needed."""
     def __init__(self, models, characters):
-        self.models = Path(models)
+        self.models = Path(models) if models is not None else None
         self.characters = Path(characters)
         self.text_det = None
         self.text_rec = None
+
+    def model_path(self, name):
+        if self.models is not None:
+            return self.models / name
+        from opencv_bv_tools.model_assets import model_path
+        return model_path(name)
     @staticmethod
     def preprocess(image):
         h, w = image.shape[:2]
@@ -412,7 +418,7 @@ class NativeOCR:
         image, rh, rw = self.preprocess(image)
         if use_det:
             if self.text_det is None:
-                self.text_det = Detector(self.models / 'PP-OCRv6_det_small.onnx')
+                self.text_det = Detector(self.model_path('PP-OCRv6_det_small.onnx'))
             h, w = image.shape[:2]
             pad = 0
             if h <= 30 or w / h > 8:
@@ -429,6 +435,6 @@ class NativeOCR:
             return SimpleNamespace(boxes=boxes)
         if use_rec:
             if self.text_rec is None:
-                self.text_rec = Recognizer(self.models / 'PP-OCRv6_rec_small.onnx', self.characters)
+                self.text_rec = Recognizer(self.model_path('PP-OCRv6_rec_small.onnx'), self.characters)
             return self.text_rec(image)
         raise ValueError('expected exactly one OCR task')

@@ -45,7 +45,7 @@ def test_verified_model_bytes_from_unicode_path(tmp_path, monkeypatch, role):
 @pytest.mark.parametrize("role,shape", [("det", (1, 3, 64, 64)), ("rec", (1, 3, 48, 320))])
 def test_buffer_and_path_inference_match(tmp_path, monkeypatch, role, shape):
     name, digest = backend.MODELS[role]
-    path = Path(backend.__file__).resolve().parents[1] / "models" / name
+    path = backend.model_path(name)
     data = path.read_bytes()
     assert hashlib.sha256(data).hexdigest() == digest
     # Keep the reference path ASCII on the hosted Windows runner; the actual

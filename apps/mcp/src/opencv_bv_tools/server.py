@@ -40,7 +40,7 @@ def create_server(config: ServerConfig):
 
     server = MCPServer(
         name="opencv-bv-server",
-        version="0.10.0.dev15",
+        version="0.10.0.dev16",
         lifespan=lifespan,
         instructions=(
             "Local image tools with allowed-folder access and separate output files. "
@@ -81,6 +81,7 @@ def main(argv=None):
     )
     parser.add_argument("--allow-dir", action="append", default=[], type=Path)
     parser.add_argument("--allow-any-path", action="store_true")
+    parser.add_argument("--model-dir", type=Path, help="directory containing verified model files")
     parser.add_argument(
         "--threads", type=int, default=min(4, max(1, (os.cpu_count() or 2) // 2))
     )
@@ -121,6 +122,8 @@ def main(argv=None):
         help="mupdf requires the optional MuPDF extra; picture is the default",
     )
     args = parser.parse_args(argv)
+    if args.model_dir is not None:
+        os.environ["OPENCV_BV_MODEL_DIR"] = str(args.model_dir.expanduser().resolve())
     try:
         server = create_server(
             ServerConfig(

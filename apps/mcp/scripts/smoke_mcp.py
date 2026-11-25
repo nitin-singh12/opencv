@@ -53,7 +53,7 @@ async def exercise(work, fixtures, pdf_engine="picture"):
     email = work / "email.png"
     email.write_bytes((fixtures / "smoke/email.png").read_bytes())
     originals = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in (qr, barcode, face, email)}
-    source_env = {key: os.environ[key] for key in ("OPENCV_BV_SOURCE_BUILD",) if key in os.environ}
+    source_env = {key: os.environ[key] for key in ("OPENCV_BV_SOURCE_BUILD", "OPENCV_BV_MODEL_DIR") if key in os.environ}
     server = StdioServerParameters(command=sys.executable, args=["-c", LAUNCH, "--allow-dir", str(work),
                                                                "--pdf-engine", pdf_engine], env=source_env)
     observations = {}

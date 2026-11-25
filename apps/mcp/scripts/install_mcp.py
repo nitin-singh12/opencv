@@ -271,6 +271,8 @@ def install_environment(root, source, mupdf):
 
 
 def check_environment(root, environment, mupdf):
+    print("Preparing verified OCR and face models.", flush=True)
+    run([executable(environment, "python"), "-m", "opencv_bv_tools.model_assets"])
     print("Checking all nine tools through MCP, using temporary test files.", flush=True)
     run([executable(environment, "python"), root / "scripts/smoke_mcp.py", "--fixtures", root / "tests/fixtures",
          "--pdf-engine", "mupdf" if mupdf else "picture"])
@@ -413,6 +415,8 @@ def main(argv=None, *, root=None):
         check_environment(root, environment, args.mupdf)
         server_args = (["--allow-any-path"] if allow_any_path else
                        [value for folder in folders for value in ("--allow-dir", folder)])
+        if os.environ.get("OPENCV_BV_MODEL_DIR"):
+            server_args += ["--model-dir", str(Path(os.environ["OPENCV_BV_MODEL_DIR"]).expanduser().resolve())]
         if args.mupdf:
             server_args += ["--pdf-engine", "mupdf"]
         command = executable(environment, "opencv-bv-mcp")

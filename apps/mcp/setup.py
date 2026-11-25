@@ -68,6 +68,9 @@ class PackageBuild(build_py):
         # the installed setup command, without maintaining a second copy.
         destination = Path(self.build_lib) / "opencv_bv_tools"
         destination.mkdir(parents=True, exist_ok=True)
+        # A reused build directory can still contain weights from an older wheel.
+        for model in (destination / "models").glob("*.onnx"):
+            model.unlink()
         self.copy_file(str(root / "scripts" / "install_mcp.py"), str(destination / "_installation.py"))
 
 

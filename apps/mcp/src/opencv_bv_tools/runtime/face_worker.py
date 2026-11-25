@@ -5,7 +5,6 @@
 
 import base64
 import hashlib
-from importlib import resources
 from importlib.metadata import PackageNotFoundError, version
 import json
 import math
@@ -22,6 +21,7 @@ from opencv_bv_tools.face_blurring import MODEL_NAME
 from opencv_bv_tools.face_blurring import MODEL_SHA256
 from opencv_bv_tools.face_blurring import QUALIFICATION
 from opencv_bv_tools.face_blurring import _failure
+from opencv_bv_tools.model_assets import verified_bytes
 from opencv_bv_tools.runtime.png_structure import PNGResourceError
 from opencv_bv_tools.runtime.opaque_image import COLOR_CHUNKS
 from opencv_bv_tools.runtime.opaque_image import (
@@ -107,9 +107,7 @@ def merge_regions(boxes):
 
 
 def model_bytes():
-    data = (
-        resources.files("opencv_bv_tools").joinpath("models", MODEL_NAME).read_bytes()
-    )
+    data = verified_bytes(MODEL_NAME)
     if hashlib.sha256(data).hexdigest() != MODEL_SHA256:
         raise ValueError("model_hash_mismatch")
     return data
