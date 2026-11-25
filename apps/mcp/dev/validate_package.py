@@ -182,7 +182,7 @@ def validate(work, prepare_only=False, unpublished=False, feature_tests=False):
             shutil.copyfile(wheel, extracted / "dist" / wheel.name)
             test_targets = ["tests/test_install_mcp.py", "tests/test_client_setup.py", "tests/test_native_wheel_tags.py",
                  "tests/test_native_runtime.py", "tests/test_ocr_process.py", "tests/test_ocr_opencv.py",
-                 "tests/test_ocr_model_loading.py",
+                 "tests/test_ocr_model_loading.py", "tests/test_model_assets.py",
                  "tests/test_unified_protocol.py",
                  "tests/test_face_blurring.py"]
             if feature_tests:

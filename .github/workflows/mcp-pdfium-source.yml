@@ -59,6 +59,7 @@ jobs:
         working-directory: apps/mcp
         env:
           OPENCV_MCP_PDFIUM_SOURCE_LIBRARY: ${{ runner.temp }}/pdfium-work/pdfium-build/libpdfium.so
+          OPENCV_BV_MODEL_DIR: ${{ runner.temp }}/mcp-models
         run: |
           test -f "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY"
           sha256sum "$OPENCV_MCP_PDFIUM_SOURCE_LIBRARY"
@@ -69,4 +70,5 @@ jobs:
           python -m venv "$RUNNER_TEMP/pdfium-install"
           "$RUNNER_TEMP/pdfium-install/bin/python" -m pip install "$RUNNER_TEMP"/pdfium-wheel/*.whl 'opencv-python-headless==5.0.0.93'
           "$RUNNER_TEMP/pdfium-install/bin/python" -I -c "import hashlib,pathlib; from opencv_bv_tools.runtime import pdfium_native as p; assert hashlib.sha256(pathlib.Path(p.lib._name).read_bytes()).hexdigest() == '2921cd65e4cace07d21b14a8a026bdeec506ccea95d4fcae3dd830f66a661601'"
+          "$RUNNER_TEMP/pdfium-install/bin/python" -I -m opencv_bv_tools.model_assets --source-dir "$GITHUB_WORKSPACE/apps/mcp/src/opencv_bv_tools/models"
           "$RUNNER_TEMP/pdfium-install/bin/python" -I scripts/smoke_mcp.py --fixtures "$GITHUB_WORKSPACE/apps/mcp/tests/fixtures"
