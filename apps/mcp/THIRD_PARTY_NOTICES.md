@@ -1,6 +1,6 @@
 # Third-party notices
 
-This index describes dependencies and bundled assets for `0.10.0.dev16`. The
+This index describes dependencies and bundled assets for `0.10.0.dev17`. The
 application uses Apache-2.0; see [LICENSING.md](LICENSING.md). Preserve
 the full notices in each installed distribution, including native components.
 Headline licence names alone are not a complete redistribution review.
@@ -47,6 +47,13 @@ FlatBuffers a direct dependency of this version.
 
 ## Model assets and bundled fixtures
 
+- Optional FG-CLIP2 image-search exports derive from `qihoo360/fg-clip2-base`
+  revision `430fbc8a912c86fd4de601381b6245a0edab22f0`, whose model card
+  declares Apache-2.0: https://huggingface.co/qihoo360/fg-clip2-base. The
+  exported weights and tokenizer are not included in the application wheel;
+  preserve applicable model notices when distributing them. The export and
+  pinned asset hashes are recorded in [image-search setup](docs/image-search.md).
+
 - YuNet `face_detection_yunet_2026may.onnx`: MIT, copyright 2020 Shiqi Yu.
   The full [licence](docs/licenses/YUNET-LICENSE.txt) is also inside the application
   wheel at `opencv_bv_tools/models/YUNET-LICENSE`. The
@@ -92,3 +99,11 @@ It is excluded from `all` and is not a dependency-reduction substitute by defaul
 Development tests may install Pillow, ReportLab, Segno and other independent
 oracles. Test environments are not shipped in the wheel or installer ZIP.
 ReportLab font files are not bundled with this application's default runtime.
+
+## Adapted search preprocessing
+
+The CPU antialiased uint8 resizing in `runtime/fgclip_opencv.py` adapts the
+fixed-point coefficient/rounding approach from PyTorch 2.9.0
+[`ATen/native/cpu/UpSampleKernel.cpp`](https://github.com/pytorch/pytorch/blob/v2.9.0/aten/src/ATen/native/cpu/UpSampleKernel.cpp).
+Preserve the [PyTorch BSD-style licence and copyright notices](docs/licenses/PYTORCH-LICENSE.txt).
+PyTorch is not installed or imported by the search runtime.

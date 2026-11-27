@@ -37,7 +37,7 @@ def check_platform():
         raise InstallError("Use Python 3.12: Linux x86-64, macOS arm64, or Windows x64. "
                            "macOS and Windows are experimental candidates pending native validation.")
     if sys.platform != "linux":
-        print("Experimental native installation: all nine tools must pass the self-check. "
+        print("Experimental native installation: the nine core tools must pass the self-check. "
               "Complete the native-platform testing guide before treating this platform as validated.")
 
 
@@ -273,13 +273,13 @@ def install_environment(root, source, mupdf):
 def check_environment(root, environment, mupdf):
     print("Preparing verified OCR and face models.", flush=True)
     run([executable(environment, "python"), "-m", "opencv_bv_tools.model_assets"])
-    print("Checking all nine tools through MCP, using temporary test files.", flush=True)
+    print("Checking nine core tools and search registration through MCP, using temporary test files.", flush=True)
     run([executable(environment, "python"), root / "scripts/smoke_mcp.py", "--fixtures", root / "tests/fixtures",
          "--pdf-engine", "mupdf" if mupdf else "picture"])
     versions = run([executable(environment, "python"), "-c",
                     "import importlib.metadata as m,json; print(json.dumps({d.metadata['Name']:d.version for d in m.distributions()},sort_keys=True,indent=2))"], capture=True)
     atomic_write(environment / "installed-versions.json", versions.encode())
-    print("OK: all 9 MCP tools passed, email addresses hidden, lookalike left alone, originals unchanged.")
+    print("OK: 9 core MCP tools passed, search tools registered; email addresses hidden, lookalike left alone, originals unchanged.")
 
 
 def promote(root, environment, expected):
@@ -377,7 +377,7 @@ def choose_access(allow_dirs, allow_any_path, registering):
 
 
 def main(argv=None, *, root=None):
-    parser = argparse.ArgumentParser(description="Install/check all nine tools and generate connection settings for local stdio MCP clients.")
+    parser = argparse.ArgumentParser(description="Install/check the core tools and generate connection settings for local stdio MCP clients.")
     parser.add_argument("--claude", action="store_true", help="also register automatically in Claude Code")
     parser.add_argument("--codex", action="store_true", help="also register automatically in Codex")
     parser.add_argument("--replace", action="store_true", help="replace a differing generated config or selected client registration")

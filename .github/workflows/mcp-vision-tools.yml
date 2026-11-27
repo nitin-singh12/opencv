@@ -1,10 +1,11 @@
 name: MCP native and source validation
 
 on:
+  workflow_dispatch:
   pull_request:
     paths: ['apps/mcp/**', '3rdparty/clipper/**', '3rdparty/pdfium/**', '3rdparty/zxing/**', '3rdparty/zxing-integration/**', 'CMakeLists.txt', '.github/workflows/mcp-vision-tools.yml']
   push:
-    branches: [mcp-vision-tools, mcp-prebuilt-wheels, mcp-source-install]
+    branches: [mcp-vision-tools, mcp-prebuilt-wheels, mcp-source-install, codex/mcp-upstream-readiness]
     paths: ['apps/mcp/**', '3rdparty/clipper/**', '3rdparty/pdfium/**', '3rdparty/zxing/**', '3rdparty/zxing-integration/**', 'CMakeLists.txt', '.github/workflows/mcp-vision-tools.yml']
 
 permissions:
@@ -22,7 +23,7 @@ jobs:
   linux:
     if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 60
     outputs:
       payload_sha256: ${{ steps.validate.outputs.payload_sha256 }}
     steps:
@@ -36,7 +37,24 @@ jobs:
         run: python -m unittest discover -s 3rdparty/pdfium -p 'test_*.py'
       - id: validate
         name: Build ZIP, clean install and native contracts
-        run: python apps/mcp/dev/validate_package.py --feature-tests --work "$RUNNER_TEMP/mcp-validation"
+        run: python apps/mcp/dev/validate_package.py --feature-tests --search-tests --work "$RUNNER_TEMP/mcp-validation"
+      - name: Retain native evidence and tested wheel
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mcp-native-linux-${{ github.sha }}
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/mcp-validation/*report.json
+            ${{ runner.temp }}/mcp-validation/payload-manifest.json
+            ${{ runner.temp }}/mcp-validation/tests.xml
+            ${{ runner.temp }}/mcp-validation/logs/*.log
+            ${{ runner.temp }}/mcp-validation/platform*/*.json
+            ${{ runner.temp }}/mcp-validation/search/search-report.json
+            ${{ runner.temp }}/mcp-validation/search/mcp-stderr.log
+            ${{ runner.temp }}/mcp-validation/search/photos/*.png
+            ${{ runner.temp }}/mcp-validation/search/indexes/*.sqlite
+            ${{ runner.temp }}/mcp-validation/dist/*
 
   native:
     needs: linux
@@ -46,7 +64,7 @@ jobs:
       matrix:
         runner: [windows-2022, macos-15]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - name: Preserve checkout line endings
         run: |
@@ -61,7 +79,24 @@ jobs:
           architecture: ${{ matrix.runner == 'macos-15' && 'arm64' || 'x64' }}
       - name: Build ZIP, clean install and native contracts
         shell: bash
-        run: python apps/mcp/dev/validate_package.py --work "$RUNNER_TEMP/mcp-validation"
+        run: python apps/mcp/dev/validate_package.py --feature-tests --search-tests --work "$RUNNER_TEMP/mcp-validation"
+      - name: Retain native evidence and tested wheel
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mcp-native-${{ matrix.runner }}-${{ github.sha }}
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/mcp-validation/*report.json
+            ${{ runner.temp }}/mcp-validation/payload-manifest.json
+            ${{ runner.temp }}/mcp-validation/tests.xml
+            ${{ runner.temp }}/mcp-validation/logs/*.log
+            ${{ runner.temp }}/mcp-validation/platform*/*.json
+            ${{ runner.temp }}/mcp-validation/search/search-report.json
+            ${{ runner.temp }}/mcp-validation/search/mcp-stderr.log
+            ${{ runner.temp }}/mcp-validation/search/photos/*.png
+            ${{ runner.temp }}/mcp-validation/search/indexes/*.sqlite
+            ${{ runner.temp }}/mcp-validation/dist/*
 
   source:
     needs: linux
@@ -80,5 +115,17 @@ jobs:
           python-version: '3.12'
       - name: Prepare isolated package environment
         run: python apps/mcp/dev/validate_package.py --prepare-only --work "$RUNNER_TEMP/mcp-validation"
-      - name: Compile OpenCV and verify native C++ and nine MCP tools
+      - name: Compile OpenCV and verify native C++ and all ten MCP features
         run: python apps/mcp/dev/validate_opencv_source.py --work "$RUNNER_TEMP/mcp-validation"
+      - name: Retain source-build and search evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mcp-source-linux-${{ github.sha }}
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/mcp-validation/*report.json
+            ${{ runner.temp }}/mcp-validation/logs/*.log
+            ${{ runner.temp }}/mcp-validation/source-imports/*.json
+            ${{ runner.temp }}/mcp-validation/source-search/search-report.json
+            ${{ runner.temp }}/mcp-validation/source-search/mcp-stderr.log

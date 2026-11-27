@@ -362,21 +362,21 @@ def test_zip_is_deterministic_and_excludes_environments(tmp_path):
         assert manifest["package_source_commit"] is None
         assert manifest["base_commit"] == "22269df80dec6d2ffa68e6f97d10d5d8ce2d6d73"
         guide = archive.read("opencv-bv-server-mcp/README.md").decode()
-        assert "Nine MCP tools" in guide
+        assert "nine core tools" in guide
+        assert "optional semantic image-search" in guide
         import hashlib
         for path, digest in manifest["files_sha256"].items():
             assert hashlib.sha256(archive.read("opencv-bv-server-mcp/" + path)).hexdigest() == digest
 
 
-def test_built_wheel_includes_model_notices_and_weights():
-    import hashlib
+def test_built_wheel_includes_notices_and_download_manifest_not_weights():
     from email.parser import BytesParser
     version = tomllib.loads((REPO / "pyproject.toml").read_text())["project"]["version"]
     wheels = sorted((REPO / "dist").glob(f"opencv_bv_tools-{version}-*.whl"))
     if not wheels:
         pytest.skip("build the wheel first to check distribution assets")
     app = wheels[-1]
-    from opencv_bv_tools.runtime.ocr_opencv import MODELS
+    from opencv_bv_tools.model_assets import MODELS, SEARCH_MODELS
     with zipfile.ZipFile(app) as archive:
         metadata_path, = [name for name in archive.namelist() if name.endswith(".dist-info/METADATA")]
         prefix = metadata_path.rsplit("/", 1)[0]
@@ -386,8 +386,11 @@ def test_built_wheel_includes_model_notices_and_weights():
             assert archive.read(f"{prefix}/licenses/{name}"), name
         notice = "docs/licenses/RAPIDOCR-MODEL-NOTICES.txt"
         assert archive.read(f"{prefix}/licenses/{notice}") == (REPO / notice).read_bytes()
-        for name, digest in MODELS.values():
-            assert hashlib.sha256(archive.read("opencv_bv_tools/models/" + name)).hexdigest() == digest
+        assert "docs/licenses/PYTORCH-LICENSE.txt" in metadata.get_all("License-File", [])
+        assert archive.read("opencv_bv_tools/model_assets.py")
+        assert not any(name.endswith((".onnx", ".npy")) for name in archive.namelist())
+        for name in (*MODELS, *SEARCH_MODELS):
+            assert "opencv_bv_tools/models/" + name not in archive.namelist()
 
 
 def interactive_answers(monkeypatch, answers):
@@ -725,7 +728,7 @@ importlib.util.find_spec = lambda name: (True if name == {module!r} else None) i
 server = types.ModuleType("opencv_bv_tools.server")
 class Server:
     async def list_tools(self):
-        return [types.SimpleNamespace(name=name) for name in ["convert_image_format", "read_qr", "read_barcodes", "compress_png", "blur_faces", "scan_document", "find_emails", "redact_emails", "redact_pdf"]]
+        return [types.SimpleNamespace(name=name) for name in ["convert_image_format", "read_qr", "read_barcodes", "compress_png", "blur_faces", "scan_document", "find_emails", "redact_emails", "redact_pdf", "index_images", "search_images", "image_search_status", "cancel_image_index"]]
 server.create_server = lambda config: Server()
 server.ServerConfig = lambda **kwargs: kwargs
 sys.modules["opencv_bv_tools"] = types.ModuleType("opencv_bv_tools")

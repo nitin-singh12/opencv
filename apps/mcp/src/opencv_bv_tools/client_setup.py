@@ -48,7 +48,11 @@ def main(argv=None):
     access = parser.add_mutually_exclusive_group()
     access.add_argument("--allow-dir", action="append", default=[], metavar="FOLDER")
     access.add_argument("--allow-any-path", action="store_true")
+    parser.add_argument('--search', action='store_true', help='enable local image search; downloads 1.54 GB of verified models')
+    parser.add_argument('--search-index-dir', type=Path, help='private directory for search indexes (use with --search)')
     args = parser.parse_args(argv)
+    if args.search_index_dir and not args.search:
+        parser.error('--search-index-dir requires --search')
 
     # Imported only after argparse, so --help stays lightweight.
     installer = load_installer()
@@ -81,6 +85,16 @@ def main(argv=None):
         if os.environ.get("OPENCV_BV_MODEL_DIR"):
             from opencv_bv_tools.model_assets import cache_directory
             server_args += ["--model-dir", str(cache_directory().resolve())]
+        if args.search:
+            from opencv_bv_tools.runtime.search_files import create_private_directory
+            search_models = install_models(search=True).resolve()
+            index = args.search_index_dir or Path.home() / '.opencv-search-index'
+            index = create_private_directory(index.expanduser().absolute())
+            server_args += ['--search-model-dir', str(search_models), '--search-index-dir', str(index)]
+            if not any_path:
+                server_args += ['--allow-dir', str(search_models), '--allow-dir', str(index)]
+            print(f'Search models ready: {search_models}')
+            print(f'Private search indexes: {index}')
         if client == "other":
             print("Add this local stdio server configuration to your client:")
             print(json.dumps({"mcpServers": {installer.NAME: {"command": str(server), "args": server_args}}}, indent=2))

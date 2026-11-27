@@ -101,3 +101,40 @@ def test_interrupted_download_leaves_no_partial_model(catalog, monkeypatch):
     with pytest.raises(OSError, match='connection lost'):
         assets.install_models()
     assert list(assets.cache_directory().iterdir()) == []
+
+
+def test_search_is_separate_optional_streamed_cache(tmp_path, monkeypatch):
+    data = b'search model' * 1000
+    monkeypatch.setattr(assets, 'SEARCH_MODELS', {
+        'model/tokenizer.json': (len(data), hashlib.sha256(data).hexdigest(), 'search-id')})
+    monkeypatch.setenv('OPENCV_BV_SEARCH_MODEL_DIR', str(tmp_path / 'search'))
+    monkeypatch.setenv('OPENCV_BV_MODEL_DIR', str(tmp_path / 'core'))
+    source = tmp_path / 'source'
+    (source / 'model').mkdir(parents=True)
+    (source / 'model/tokenizer.json').write_bytes(data)
+    result = assets.install_models(source, search=True)
+    assert (result / 'model/tokenizer.json').read_bytes() == data
+    assert not assets.cache_directory().exists()
+    monkeypatch.setattr(assets, 'build_opener', lambda *a: pytest.fail('Already verified'))
+    assert assets.install_models(search=True) == result
+
+
+@pytest.mark.parametrize('payload', [b'', b'short', b'x' * len(b'first test model')])
+def test_invalid_bytes_preserve_previous_models_and_allow_retry(catalog, monkeypatch, tmp_path, payload):
+    class Opener:
+        def open(self, url, timeout):
+            return io.BytesIO(payload)
+    monkeypatch.setattr(assets, 'build_opener', lambda *a: Opener())
+    destination = assets.cache_directory()
+    destination.mkdir(parents=True)
+    (destination / 'two.onnx').write_bytes(catalog['two.onnx'])
+    with pytest.raises(ValueError, match='SHA-256'):
+        assets.install_models()
+    assert list(destination.iterdir()) == [destination / 'two.onnx']
+    assert (destination / 'two.onnx').read_bytes() == catalog['two.onnx']
+    source = tmp_path / 'retry'
+    source.mkdir()
+    for name, data in catalog.items():
+        (source / name).write_bytes(data)
+    assets.install_models(source)
+    assert all(assets.verified_bytes(name) == data for name, data in catalog.items())

@@ -34,8 +34,17 @@ class ServerConfig:
     pdf_timeout: float = 1800.0
     max_pages: int = 100
     pdf_engine: str = "picture"
+    search_model_dir: Path | None = None
+    search_index_dir: Path | None = None
+    search_backend: str = "fgclip2"
+    search_device: str = "cpu"
+    search_timeout: float = 180.0
+    search_idle_seconds: float = 120.0
+    search_job_timeout: float = 3600.0
 
     def validate(self):
+        from opencv_bv_tools.semantic_search import validate_search_config
+        validate_search_config(self)
         if not self.allow_dirs and not self.allow_any_path:
             raise ValueError("Pass --allow-dir DIR (repeatable) to choose the folders the server may use.")
         if type(self.threads) is not int or not 1 <= self.threads <= 64:

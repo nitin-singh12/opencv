@@ -5,7 +5,7 @@ backend-path = ["native"]
 
 [project]
 name = "opencv-bv-tools"
-version = "0.10.0.dev16"
+version = "0.10.0.dev17"
 description = "Modular local image tools with one MCP server"
 readme = "README.md"
 license = "Apache-2.0 AND MIT AND BSL-1.0 AND BSD-3-Clause AND LicenseRef-PDFium-Bundled-Notices"
@@ -15,7 +15,7 @@ dependencies = ["mcp==2.3.0", "numpy==2.2.6"]
 
 [project.urls]
 Repository = "https://github.com/nitin-singh12/opencv"
-Documentation = "https://github.com/nitin-singh12/opencv/blob/mcp-vision-tools/apps/mcp/README.md"
+Documentation = "https://github.com/nitin-singh12/opencv/blob/codex/mcp-upstream-readiness/apps/mcp/README.md"
 
 [project.optional-dependencies]
 test = ["pypdfium2==5.14.0", "Pillow==12.3.0", "reportlab==4.4.9", "pytest==9.0.2", "build==1.6.1", "coverage==7.17.0; python_version >= '3.11'", "coverage==7.10.7; python_version < '3.11'"]

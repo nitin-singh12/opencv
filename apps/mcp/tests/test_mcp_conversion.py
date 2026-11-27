@@ -229,7 +229,7 @@ def test_real_protocol_schema_errors_without_ocr(setup):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 tools = {tool.name: tool for tool in (await session.list_tools()).tools}
-                assert "convert_image_format" in tools and len(tools) == 9
+                assert "convert_image_format" in tools and len(tools) == 13
                 wire = tools["convert_image_format"].model_dump(by_alias=True)
                 schema = wire["inputSchema"]
                 assert set(schema["required"]) == {"image_path", "output_path"}

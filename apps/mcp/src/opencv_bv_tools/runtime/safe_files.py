@@ -103,6 +103,13 @@ class Folders:
     def __init__(self, allowed):
         self.allowed = None if allowed is None else [_real_folder(Path(d).expanduser()) for d in allowed]
 
+    @classmethod
+    def from_canonical(cls, allowed):
+        """Restrict reads to already verified folder paths, without resolving them again."""
+        instance = cls.__new__(cls)
+        instance.allowed = None if allowed is None else [Path(p) for p in allowed]
+        return instance
+
     def check(self, real, what):
         """what names the path as the caller gave it; the resolved path is
         never shown, so a link cannot reveal where it points."""

@@ -127,6 +127,13 @@ def validate(work):
         source_env = {"OPENCV_BV_SOURCE_BUILD": str(environment)}
         run([python, extracted / "scripts/smoke_mcp.py", "--fixtures", extracted / "tests/fixtures"],
             cwd=work, env=source_env, timeout=300)
+        run([python, "-I", "-m", "opencv_bv_tools.model_assets", "--search"],
+            cwd=work, timeout=1800)
+        run([python, "-I", ROOT / "dev/smoke_search.py", "--work", work / "source-search"],
+            cwd=work, env=source_env, timeout=2400)
+        report["real_model_search"] = json.loads(
+            (work / "source-search/search-report.json").read_text(encoding="utf-8"))
+        assert report["real_model_search"]["status"] == "passed"
         records = [json.loads(p.read_text()) for p in sorted(audit.glob("*.json"))]
         assert records
         hashes = {record["build_sha256"] for record in records}
@@ -136,7 +143,7 @@ def validate(work):
             assert Path(record["module_file"]).resolve().is_relative_to(environment), record
             assert record["native_libraries"], record
             assert all(Path(path).resolve().is_relative_to(environment) for path in record["native_libraries"]), record
-        for worker in ("face_worker.py", "ocr_worker.py"):
+        for worker in ("face_worker.py", "ocr_worker.py", "search_worker.py"):
             assert any(any(str(arg).endswith(worker) for arg in record["argv"]) for record in records), (worker, records)
         report.update(status="passed", nine_tool_smoke="passed with source-built OpenCV",
                       source_imports=records, build_sha256=next(iter(hashes)))

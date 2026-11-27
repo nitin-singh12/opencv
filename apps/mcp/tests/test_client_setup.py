@@ -25,7 +25,10 @@ def test_other_client_uses_installed_server_and_preserves_spaced_folder(tmp_path
     config = json.loads(result.stdout[result.stdout.index("{"):result.stdout.rindex("}") + 1])
     entry = config["mcpServers"]["opencv-bv-server"]
     assert Path(entry["command"]).is_file()
-    assert entry["args"] == ["--allow-dir", str(folder)]
+    expected = ["--allow-dir", str(folder)]
+    if os.environ.get("OPENCV_BV_MODEL_DIR"):
+        expected += ["--model-dir", str(Path(os.environ["OPENCV_BV_MODEL_DIR"]).expanduser().resolve())]
+    assert entry["args"] == expected
 
 
 def test_noninteractive_setup_requires_client(tmp_path):
@@ -94,3 +97,31 @@ def test_codex_setup_is_idempotent_and_preserves_existing_entry(tmp_path, monkey
     assert changed.returncode != 0 and "--replace" in changed.stderr
     config = (tmp_path / "codex config" / "config.toml").read_text()
     assert "--allow-any-path" in config and "tool_timeout_sec = 1860" in config
+
+
+def test_search_setup_adds_private_index_and_verified_models(tmp_path, monkeypatch, capsys):
+    from opencv_bv_tools import client_setup, model_assets
+    from opencv_bv_tools.runtime.search_files import verify_private_directory
+    server = tmp_path / 'server'
+    server.touch()
+    photos = tmp_path / 'photos'
+    photos.mkdir()
+    models = tmp_path / 'search models'
+    models.mkdir()
+    index = tmp_path / 'private index'
+    monkeypatch.delenv('OPENCV_BV_MODEL_DIR', raising=False)
+    monkeypatch.setattr(client_setup, 'server_executable', lambda: server)
+    requested = []
+    def install(*, search=False):
+        requested.append(search)
+        return models if search else tmp_path / 'core'
+    monkeypatch.setattr(model_assets, 'install_models', install)
+    assert client_setup.main(['--client', 'other', '--allow-dir', str(photos), '--search',
+                              '--search-index-dir', str(index)]) == 0
+    assert requested == [False, True]
+    verify_private_directory(index)
+    output = capsys.readouterr().out
+    config = json.loads(output[output.index('{'):output.rindex('}') + 1])
+    args = config['mcpServers']['opencv-bv-server']['args']
+    assert args == ['--allow-dir', str(photos), '--search-model-dir', str(models),
+                    '--search-index-dir', str(index), '--allow-dir', str(models), '--allow-dir', str(index)]

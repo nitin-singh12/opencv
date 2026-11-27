@@ -20,6 +20,7 @@ from opencv_bv_tools import (
     pdf_tools,
     png_compression,
     qr_reader,
+    semantic_search,
 )
 from opencv_bv_tools.runtime.context import ServerConfig, ToolContext
 from opencv_bv_tools.runtime.process_support import check_platform
@@ -40,7 +41,7 @@ def create_server(config: ServerConfig):
 
     server = MCPServer(
         name="opencv-bv-server",
-        version="0.10.0.dev16",
+        version="0.10.0.dev17",
         lifespan=lifespan,
         instructions=(
             "Local image tools with allowed-folder access and separate output files. "
@@ -72,6 +73,7 @@ def create_server(config: ServerConfig):
     email_service = email_tools.register_tools(server, context)
     services.append(email_service)
     pdf_tools.register_tools(server, context, email_service)
+    services.append(semantic_search.register_tools(server, context))
     return server
 
 
@@ -82,6 +84,11 @@ def main(argv=None):
     parser.add_argument("--allow-dir", action="append", default=[], type=Path)
     parser.add_argument("--allow-any-path", action="store_true")
     parser.add_argument("--model-dir", type=Path, help="directory containing verified model files")
+    parser.add_argument("--search-model-dir", type=Path, help="verified local FG-CLIP2 export directory")
+    parser.add_argument("--search-index-dir", type=Path, help="existing private search index directory")
+    parser.add_argument("--search-timeout", type=float, default=180.0)
+    parser.add_argument("--search-idle-seconds", type=float, default=120.0)
+    parser.add_argument("--search-job-timeout", type=float, default=3600.0)
     parser.add_argument(
         "--threads", type=int, default=min(4, max(1, (os.cpu_count() or 2) // 2))
     )
@@ -139,6 +146,11 @@ def main(argv=None):
                 pdf_timeout=args.pdf_timeout,
                 max_pages=args.max_pages,
                 pdf_engine=args.pdf_engine,
+                search_model_dir=args.search_model_dir,
+                search_index_dir=args.search_index_dir,
+                search_timeout=args.search_timeout,
+                search_idle_seconds=args.search_idle_seconds,
+                search_job_timeout=args.search_job_timeout,
             )
         )
     except ValueError as exc:

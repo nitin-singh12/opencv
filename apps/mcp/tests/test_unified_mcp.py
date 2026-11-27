@@ -21,7 +21,8 @@ FEATURE_MODULES = {"qr": "qr_reader", "barcode": "barcode_reader", "png": "png_c
                    "face": "face_blurring", "scanner": "document_scanner", "email": "email_tools"}
 
 TOOL_NAMES = {"convert_image_format", "read_qr", "read_barcodes", "compress_png",
-              "blur_faces", "scan_document", "redact_emails", "find_emails", "redact_pdf"}
+              "blur_faces", "scan_document", "redact_emails", "find_emails", "redact_pdf",
+              "index_images", "search_images", "image_search_status", "cancel_image_index"}
 
 
 class Registry:

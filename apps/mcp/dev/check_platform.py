@@ -60,7 +60,8 @@ try:
         server = create_server(ServerConfig(allow_dirs=(Path(directory),)))
         names = sorted(tool.name for tool in asyncio.run(server.list_tools()))
     expected = {"convert_image_format", "read_qr", "read_barcodes", "compress_png",
-                "blur_faces", "scan_document", "find_emails", "redact_emails", "redact_pdf"}
+                "blur_faces", "scan_document", "find_emails", "redact_emails", "redact_pdf",
+                "index_images", "search_images", "image_search_status", "cancel_image_index"}
     heavy = sorted(set(sys.modules) & {"cv2", "numpy", "rapidocr", "onnxruntime", "shapely", "pypdfium2", "pymupdf"})
     result.update(tools=names, heavy_imports=heavy)
     optional = {"pypdfium2", "zxing-cpp", "Pillow", "pyoxipng", "pyclipper", "reportlab", "requests", "charset-normalizer", "segno", "rapidocr", "onnxruntime", "onnxruntime-gpu", "Shapely"}

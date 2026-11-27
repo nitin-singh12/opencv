@@ -17,6 +17,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 COMMANDS = []
+COMMAND_LOG_DIR = None
 
 
 def run(command, cwd=ROOT, timeout=900, env=None):
@@ -30,7 +31,15 @@ def run(command, cwd=ROOT, timeout=900, env=None):
     print(json.dumps(record), flush=True)
     started = time.monotonic()
     try:
-        result = subprocess.run(command, cwd=cwd, env=environment, timeout=timeout)
+        if COMMAND_LOG_DIR is None:
+            result = subprocess.run(command, cwd=cwd, env=environment, timeout=timeout)
+        else:
+            log = COMMAND_LOG_DIR / f"{len(COMMANDS):02d}.log"
+            record["log"] = str(log)
+            with log.open("wb") as output:
+                result = subprocess.run(command, cwd=cwd, env=environment, timeout=timeout,
+                                        stdout=output, stderr=subprocess.STDOUT)
+            print(log.read_text(encoding="utf-8", errors="replace"), flush=True)
         record["exit_code"] = result.returncode
         result.check_returncode()
     finally:
@@ -78,8 +87,11 @@ def verify_bundle(archive, commit, unpublished=False):
         return manifest
 
 
-def validate(work, prepare_only=False, unpublished=False, feature_tests=False):
+def validate(work, prepare_only=False, unpublished=False, feature_tests=False, search_tests=False):
+    global COMMAND_LOG_DIR
     work.mkdir(parents=True, exist_ok=False)
+    COMMAND_LOG_DIR = work / "logs"
+    COMMAND_LOG_DIR.mkdir()
     dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, text=True)
     # Setuptools and the ZIP builder read working-tree files, including new
     # modules/assets. They must belong to the claimed commit in committed mode.
@@ -158,6 +170,14 @@ def validate(work, prepare_only=False, unpublished=False, feature_tests=False):
         assert report["default_install"]["shapely_absent"], "Shapely must not be installed or importable"
         print("DEFAULT INSTALL " + json.dumps(report["default_install"], sort_keys=True), flush=True)
         run([installed, "-m", "ensurepip", "--upgrade"], cwd=work)
+        if search_tests:
+            # Exercise production dependencies before adding test-only oracles.
+            # Public, checksummed assets; inference itself remains offline/local.
+            run([installed, "-I", "-m", "opencv_bv_tools.model_assets", "--search"], cwd=work, timeout=1800)
+            run([installed, "-I", ROOT / "dev/smoke_search.py", "--work", work / "search"],
+                cwd=work, timeout=2400)
+            report["real_model_search"] = json.loads((work / "search/search-report.json").read_text(encoding="utf-8"))
+            assert report["real_model_search"]["status"] == "passed"
         if not prepare_only:
             # Independent TEST oracles, absent during the preceding runtime checks.
             test_dependencies = ["pytest==9.0.2", "psutil==7.2.2", "Pillow==12.3.0", "reportlab==4.4.9"]
@@ -185,12 +205,35 @@ def validate(work, prepare_only=False, unpublished=False, feature_tests=False):
                  "tests/test_ocr_model_loading.py", "tests/test_model_assets.py",
                  "tests/test_unified_protocol.py",
                  "tests/test_face_blurring.py"]
+            test_targets += ["tests/test_semantic_search.py", "tests/test_search_pagination.py",
+                             "tests/test_search_encoder.py", "tests/test_search_decoding.py",
+                             "tests/test_search_files.py", "tests/test_search_process.py"]
             if feature_tests:
-                test_targets += ["tests/test_conversion.py", "tests/test_independent_conversion.py", "tests/test_files_cli.py",
-                                 "tests/test_barcode_reader.py", "tests/test_document_scanner.py",
-                                 "tests/test_png_compression.py", "tests/test_pdf_mcp.py",
-                                 "tests/test_pdfium_native.py", "tests/test_integration_regressions.py",
-                                 "tests/test_mcp_conversion.py", "tests/test_qr_reader.py"]
+                test_targets += ["tests/test_conversion.py", "tests/test_independent_conversion.py",
+                                 "tests/test_barcode_reader.py", "tests/test_pdfium_native.py", "tests/test_qr_reader.py"]
+                if sys.platform == "win32":
+                    # Ordinary Windows output overwrite is intentionally refused;
+                    # these portable feature cases supplement the nine-tool smoke
+                    # and Windows-specific file/process contracts above.
+                    test_targets += [
+                        "tests/test_document_scanner.py::test_exif_then_clockwise_rotation_preserves_samples",
+                        "tests/test_document_scanner.py::test_all_modes_alpha_hidden_samples_and_metadata",
+                        "tests/test_document_scanner.py::test_deterministic_repeat_and_equivalent_half_turns",
+                        "tests/test_document_scanner.py::test_scanner_supervision_cancellation_timeout_and_protocol",
+                        "tests/test_png_compression.py::test_pillow_modes_and_non_growing_repeat",
+                        "tests/test_png_compression.py::test_independent_encoder_depths_adam7_empty_passes",
+                        "tests/test_png_compression.py::test_orientation_and_rendering_metadata_preserved",
+                        "tests/test_png_compression.py::test_protocol_faults_reap_without_reader_keys",
+                        "tests/test_pdf_mcp.py::test_pdf_image_pdf_reuses_worker_and_resets_settings",
+                        "tests/test_pdf_mcp.py::test_pdf_redaction_covers_rendered_address_and_preserves_page_size",
+                    ]
+                    report["feature_scope"] = "portable Windows codec/PDF cases; POSIX overwrite/FIFO cases excluded"
+                else:
+                    test_targets += ["tests/test_files_cli.py", "tests/test_document_scanner.py",
+                                     "tests/test_png_compression.py", "tests/test_pdf_mcp.py",
+                                     "tests/test_integration_regressions.py", "tests/test_mcp_conversion.py"]
+                    report["feature_scope"] = "selected feature modules including POSIX file publication cases"
+            report["pytest_targets"] = test_targets
             run([installed, "-m", "pytest", "-q", "-ra", *test_targets, "--junitxml", work / "tests.xml"], cwd=extracted, timeout=900)
             report["native_contracts"] = ("selected tests plus feature regressions" if feature_tests else "selected tests") + "; passed; consult pytest log for skips"
         report["status"] = "passed"
@@ -215,5 +258,6 @@ if __name__ == "__main__":
     parser.add_argument("--prepare-only", action="store_true", help="Build/install/smoke without extra unit tests")
     parser.add_argument("--unpublished", action="store_true", help="Validate local changes and record HEAD only as the base commit")
     parser.add_argument("--feature-tests", action="store_true", help="Run additional selected feature regressions using test-only dependencies")
+    parser.add_argument("--search-tests", action="store_true", help="Download verified search assets and run real installed-wheel CPU search acceptance")
     args = parser.parse_args()
-    validate(args.work.resolve(), args.prepare_only, args.unpublished, args.feature_tests)
+    validate(args.work.resolve(), args.prepare_only, args.unpublished, args.feature_tests, args.search_tests)

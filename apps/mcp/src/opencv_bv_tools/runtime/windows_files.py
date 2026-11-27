@@ -108,11 +108,11 @@ def normalize_path(value):
     return absolute
 
 
-def _open(path, access=READ_ATTRIBUTES, *, directory=False, create=False, descriptor=None):
+def _open(path, access=READ_ATTRIBUTES, *, directory=False, create=False, descriptor=None, share=SHARE_READ_WRITE):
     attributes = None
     if descriptor is not None:
         attributes = _SecurityAttributes(C.sizeof(_SecurityAttributes), descriptor, False)
-    handle = _create(str(path), access, SHARE_READ_WRITE, C.byref(attributes) if attributes else None,
+    handle = _create(str(path), access, share, C.byref(attributes) if attributes else None,
                      1 if create else 3, OPEN_REPARSE | (BACKUP_SEMANTICS if directory else 0), None)
     if handle == INVALID_HANDLE:
         raise C.WinError(C.get_last_error())
@@ -238,7 +238,7 @@ def check_output(path, folders, protect=(), overwrite=False, suffix=".png"):
 
 
 @contextlib.contextmanager
-def _private_descriptor():
+def _private_descriptor(*, inherit=False):
     """Protected DACL: the current account alone can access the new output."""
     token, sid, descriptor = W.HANDLE(), W.LPWSTR(), C.c_void_p()
     try:
@@ -248,7 +248,7 @@ def _private_descriptor():
         buffer = C.create_string_buffer(size.value)
         _checked(_token_info(token, 1, buffer, size, C.byref(size)))
         _checked(_sid_string(C.cast(buffer, C.POINTER(C.c_void_p))[0], C.byref(sid)))
-        _checked(_descriptor(f"D:P(A;;FA;;;{sid.value})", 1, C.byref(descriptor), None))
+        _checked(_descriptor(f"O:{sid.value}D:P(A;{'OICI' if inherit else ''};FA;;;{sid.value})", 1, C.byref(descriptor), None))
         yield descriptor
     finally:
         if descriptor.value:
@@ -259,14 +259,14 @@ def _private_descriptor():
             _close(token)
 
 
-def _publish(handle, path):
+def _publish(handle, path, *, replace=False):
     # Rename this open file, never a re-looked-up temporary pathname. FALSE
     # means an entry appearing at the output name wins and is never replaced.
     encoded = str(path).encode("utf-16-le")
     class RenameInfo(C.Structure):
         _fields_ = [("replace", W.BOOL), ("root", W.HANDLE), ("length", W.DWORD),
                     ("name", C.c_byte * (len(encoded) + 2))]
-    info = RenameInfo(False, None, len(encoded))
+    info = RenameInfo(replace, None, len(encoded))
     C.memmove(C.addressof(info) + RenameInfo.name.offset, encoded, len(encoded))
     # Win32 path conversion expects a terminated string even though the
     # byte count excludes its terminator. Keep the two extra bytes zeroed.

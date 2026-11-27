@@ -51,6 +51,33 @@ def limit_renderer_memory(limit):
             resource.setrlimit(kind, (value, value))
 
 
+def protect_private_worker():
+    """Reduce crash-data exposure; administrators and OS dump policies still apply."""
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        get_mode = kernel.GetErrorMode
+        get_mode.restype, get_mode.argtypes = wintypes.UINT, []
+        set_mode = kernel.SetErrorMode
+        set_mode.restype, set_mode.argtypes = wintypes.UINT, [wintypes.UINT]
+        # SEM_NOGPFAULTERRORBOX suppresses automatic WER invocation. It cannot
+        # override administrator-configured LocalDumps or external debuggers.
+        set_mode(get_mode() | 0x0002)
+        return
+    if sys.platform not in {"linux", "darwin"}:
+        raise RuntimeError("Private image search requires Linux or macOS.")
+    import resource
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    if sys.platform == "linux":
+        import ctypes
+        libc = ctypes.CDLL(None, use_errno=True)
+        libc.prctl.argtypes = [ctypes.c_int, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong]
+        libc.prctl.restype = ctypes.c_int
+        if libc.prctl(4, 0, 0, 0, 0) != 0 or libc.prctl(3, 0, 0, 0, 0) != 0:
+            raise RuntimeError("Private-process crash-dump protection is unavailable.")
+
+
 def start_worker(command, *, pass_fds=(), memory_limit=None, **kwargs):
     """Start a worker, handing only explicitly listed PDF descriptors to it."""
     check_platform()

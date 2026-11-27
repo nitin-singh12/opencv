@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # See the LICENSE file distributed with this application for license terms.
 
-"""Exercise all nine tools through MCP stdio using synthetic/local fixtures.
+"""Exercise nine core tools and search registration over MCP stdio.
 
 Run with the all and qr-test extras installed. --fixtures defaults to this
 checkout's tests/fixtures; pass its absolute path when testing an installed
@@ -25,7 +25,8 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 NAMES = {"convert_image_format", "read_qr", "read_barcodes", "compress_png",
-         "blur_faces", "scan_document", "redact_emails", "find_emails", "redact_pdf"}
+         "blur_faces", "scan_document", "redact_emails", "find_emails", "redact_pdf",
+         "index_images", "search_images", "image_search_status", "cancel_image_index"}
 LAUNCH = """
 import socket
 def offline(*args, **kwargs):
