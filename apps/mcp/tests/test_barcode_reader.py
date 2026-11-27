@@ -244,11 +244,13 @@ def test_cancellation_deadline_and_descriptor_stability():
     data=encoded(make_code('EAN13','590123412345'))
     assert read_barcodes(data,cancelled=lambda:True)['stop_reason']=='cancelled'
     assert read_barcodes(data,limits=BarcodeLimits(timeout_seconds=.00001))['stop_reason']=='deadline_exceeded'
-    proc=psutil.Process();fds=proc.num_fds();children={p.pid for p in proc.children()}
+    proc=psutil.Process()
+    resource_count=proc.num_handles if sys.platform == "win32" else proc.num_fds
+    resources=resource_count();children={p.pid for p in proc.children()}
     start=time.monotonic()
     assert fake_worker('import time;time.sleep(10)',cancelled=lambda:time.monotonic()-start>.08)['stop_reason']=='cancelled'
     for _ in range(6):assert payloads(read_barcodes(data))==[b'5901234123457']
-    assert proc.num_fds()==fds and {p.pid for p in proc.children()}==children
+    assert resource_count()==resources and {p.pid for p in proc.children()}==children
 
 
 def test_dependency_failure_and_worker_version(monkeypatch):

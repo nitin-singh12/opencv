@@ -235,9 +235,10 @@ def test_cancel_before_during_and_exception_cleanup():
 def test_repeated_requests_do_not_leak_fds_or_children():
     import psutil
     current=psutil.Process()
-    before=(current.num_fds(),{p.pid for p in current.children()})
+    resource_count=current.num_handles if sys.platform == "win32" else current.num_fds
+    before=(resource_count(),{p.pid for p in current.children()})
     for _ in range(8): assert payloads(read_qr(encoded(qr()))) == [b"QR test"]
-    assert (current.num_fds(),{p.pid for p in current.children()})==before
+    assert (resource_count(),{p.pid for p in current.children()})==before
 
 
 def test_cli_json_and_original_unchanged(tmp_path):

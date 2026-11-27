@@ -50,6 +50,7 @@ _descriptor = _api(security, "ConvertStringSecurityDescriptorToSecurityDescripto
                    W.BOOL, W.LPCWSTR, W.DWORD, C.POINTER(C.c_void_p), C.c_void_p)
 
 READ_ATTRIBUTES = 0x80
+LIST_DIRECTORY = 0x1
 GENERIC_READ, GENERIC_WRITE, DELETE = 0x80000000, 0x40000000, 0x10000
 SHARE_READ_WRITE = 3  # Deliberately excludes FILE_SHARE_DELETE.
 OPEN_REPARSE, BACKUP_SEMANTICS = 0x00200000, 0x02000000
@@ -148,7 +149,9 @@ def _directories(folder, *, create=False):
             if part is not None:
                 current /= part
             try:
-                handle = _open(current, directory=True)
+                # Metadata-only access does not participate in share checks.
+                # Listing access makes omission of FILE_SHARE_DELETE pin the name.
+                handle = _open(current, READ_ATTRIBUTES | LIST_DIRECTORY, directory=True)
             except FileNotFoundError:
                 if not create:
                     raise UnsafePath(f"The folder {folder} does not exist.") from None
@@ -157,7 +160,7 @@ def _directories(folder, *, create=False):
                     created.append(current)
                 except FileExistsError:
                     pass
-                handle = _open(current, directory=True)
+                handle = _open(current, READ_ATTRIBUTES | LIST_DIRECTORY, directory=True)
             handles.append(handle)
             if _real_path(handle) != current:
                 raise UnsafePath("The folder changed while it was being opened.")

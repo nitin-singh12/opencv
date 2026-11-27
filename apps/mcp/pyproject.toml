@@ -5,7 +5,7 @@ backend-path = ["native"]
 
 [project]
 name = "opencv-bv-tools"
-version = "0.10.0.dev17"
+version = "0.10.0.dev18"
 description = "Modular local image tools with one MCP server"
 readme = "README.md"
 license = "Apache-2.0 AND MIT AND BSL-1.0 AND BSD-3-Clause AND LicenseRef-PDFium-Bundled-Notices"

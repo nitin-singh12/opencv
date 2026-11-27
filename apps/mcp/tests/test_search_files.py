@@ -45,7 +45,7 @@ sys.stdin.buffer.read(1)
     child = subprocess.Popen([sys.executable, "-c", code, str(path / ".opencv-search-owner")],
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
-        assert child.stdout.readline() == b"owned\n"
+        assert child.stdout.readline().rstrip(b"\r\n") == b"owned"
         with pytest.raises(BlockingIOError):
             search_files.claim_owner(path / ".opencv-search-owner", folders)
     finally:
@@ -102,12 +102,33 @@ def test_windows_private_acl_inherits_only_current_user(private):
 
 
 @WINDOWS
-def test_windows_directory_pins_prevent_ancestor_rename(private):
+@pytest.mark.parametrize("rename_ancestor", [False, True])
+def test_windows_directory_pins_prevent_ancestor_rename(private, rename_ancestor):
     path, folders = private
-    with search_files.folder(path, folders):
-        with pytest.raises(OSError):
-            path.rename(path.with_name("renamed"))
-    path.rename(path.with_name("renamed"))
+    ancestor = path / "parent"
+    child = ancestor / "child"
+    child.mkdir(parents=True)
+    source = ancestor if rename_ancestor else child
+    destination = source.with_name("renamed")
+    code = '''
+import os, sys
+try:
+    os.rename(sys.argv[1], sys.argv[2])
+except OSError as error:
+    print(error.winerror)
+    sys.exit(1)
+'''
+    command = [sys.executable, "-c", code, str(source), str(destination)]
+    with search_files.folder(child, folders):
+        with pytest.raises(OSError) as error:
+            source.rename(destination)
+        assert error.value.winerror == 32  # ERROR_SHARING_VIOLATION
+        attempt = subprocess.run(command, capture_output=True, text=True, timeout=10)
+        assert attempt.returncode == 1 and attempt.stdout.strip() == "32", attempt
+        assert source.is_dir() and not destination.exists()
+    # Prove the refusal came from the held handles, not permanent ACL denial.
+    subprocess.run(command, check=True, capture_output=True, timeout=10)
+    assert destination.is_dir() and not source.exists()
 
 
 @WINDOWS

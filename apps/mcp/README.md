@@ -9,7 +9,7 @@ The OpenCV build includes optional, disabled-by-default native targets for the
 bundled dependencies. This is not an official OpenCV release or an accepted
 upstream contribution.
 
-**Status:** experimental version `0.10.0.dev17`. The `mcp-prebuilt-wheels` and
+**Status:** experimental version `0.10.0.dev18`. The `mcp-prebuilt-wheels` and
 `mcp-source-install` branches support wheel and application-source testing.
 The current model-download and optional image-search work is on
 [`codex/mcp-upstream-readiness`](https://github.com/nitin-singh12/opencv/tree/codex/mcp-upstream-readiness/apps/mcp).
@@ -102,7 +102,7 @@ After extracting a prepared ZIP, users who prefer pip can install the local
 application wheel and resolve the other dependencies from their configured index:
 
 ```bash
-python -m pip install -c install-constraints.txt --find-links wheels 'opencv-bv-tools[all,wheel]==0.10.0.dev17'
+python -m pip install -c install-constraints.txt --find-links wheels 'opencv-bv-tools[all,wheel]==0.10.0.dev18'
 ```
 
 Use Python 3.12 in an isolated environment. This command installs the package;
@@ -114,7 +114,7 @@ prepare client connection settings.
 Earlier experimental Python 3.12 test wheels were built for Linux x86-64 (tested
 on Ubuntu 22.04), Windows x64 (tested on Windows Server 2022), and Apple Silicon
 macOS (wheel requires macOS 13 or later; tested on macOS 15). These are historical
-results for earlier commits, not validation of this checkout's `0.10.0.dev17`
+results for earlier commits, not validation of this checkout's `0.10.0.dev18`
 model-download changes on Windows or macOS. Draft release artifacts may also be
 older than this checkout. Repository maintainers can inspect the draft under
 [GitHub releases](https://github.com/nitin-singh12/opencv/releases); draft
@@ -164,7 +164,7 @@ For a downloaded wheel, this example uses the Linux filename from its download
 directory. Replace the name with the actual wheel for your platform:
 
 ```bash
-python -m pip install --only-binary=:all: './opencv_bv_tools-0.10.0.dev17-cp312-cp312-linux_x86_64.whl[wheel]'
+python -m pip install --only-binary=:all: './opencv_bv_tools-0.10.0.dev18-cp312-cp312-linux_x86_64.whl[wheel]'
 python -m pip check
 opencv-bv-setup
 ```
@@ -178,7 +178,7 @@ The package has not been published to PyPI. For a prepared platform-specific
 wheel, replace the path below with its actual absolute filename (Python 3.12):
 
 ```bash
-python -m pip install '/absolute/path/to/opencv_bv_tools-0.10.0.dev17-PLATFORM.whl[wheel]'
+python -m pip install '/absolute/path/to/opencv_bv_tools-0.10.0.dev18-PLATFORM.whl[wheel]'
 opencv-bv-setup
 ```
 
@@ -446,7 +446,7 @@ python3.12 -m venv .venv-dev
 .venv-dev/bin/python -m pip install -c install-constraints.txt '.[all,wheel,test,png-test,scanner-test,barcode-test,qr-test,face-test]'
 .venv-dev/bin/python -m pytest tests
 .venv-dev/bin/python -m build --wheel
-.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev17-cp312-cp312-linux_x86_64.whl --source-commit "$(git rev-parse HEAD)" --unpublished
+.venv-dev/bin/python scripts/build_mcp_zip.py --wheel dist/opencv_bv_tools-0.10.0.dev18-cp312-cp312-linux_x86_64.whl --source-commit "$(git rev-parse HEAD)" --unpublished
 ```
 
 The wheel path above is an example for Linux x86-64 and Python 3.12; use the
