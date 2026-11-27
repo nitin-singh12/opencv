@@ -13,6 +13,35 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
+def process_stopped(pid):
+    try:
+        return psutil.Process(pid).status() == psutil.STATUS_ZOMBIE
+    except psutil.NoSuchProcess:
+        # The helper can exit between opening its process object and querying it.
+        return True
+
+
+@pytest.mark.parametrize("state", ["running", "zombie", "absent", "exited", "denied"])
+def test_process_stopped_handles_exit_during_status(monkeypatch, state):
+    class Process:
+        def __init__(self, pid):
+            if state == "absent":
+                raise psutil.NoSuchProcess(pid)
+
+        def status(self):
+            if state == "exited":
+                raise psutil.NoSuchProcess(123)
+            if state == "denied":
+                raise psutil.AccessDenied(123)
+            return state
+    monkeypatch.setattr(psutil, "Process", Process)
+    if state == "denied":
+        with pytest.raises(psutil.AccessDenied):
+            process_stopped(123)
+    else:
+        assert process_stopped(123) == (state in {"zombie", "absent", "exited"})
+
+
 @pytest.mark.parametrize("overwrite", [False, True])
 def test_cancel_native_worker_and_recover(tmp_path, overwrite):
     if os.name == "nt" and overwrite:
@@ -112,11 +141,9 @@ def test_cancel_pdf_tree_then_recover(tmp_path, phase, overwrite):
                 task.cancel()
                 with pytest.raises(asyncio.CancelledError): await task
                 deadline=time.monotonic()+4
-                def stopped(pid):
-                    return not psutil.pid_exists(pid) or psutil.Process(pid).status()==psutil.STATUS_ZOMBIE
-                while (psutil.pid_exists(worker) or not stopped(helper)) and time.monotonic()<deadline:
+                while (psutil.pid_exists(worker) or not process_stopped(helper)) and time.monotonic()<deadline:
                     await asyncio.sleep(0.02)
-                assert not psutil.pid_exists(worker) and stopped(helper)
+                assert not psutil.pid_exists(worker) and process_stopped(helper)
                 if overwrite:
                     assert output.read_bytes()==b'keep existing output'
                 else:
