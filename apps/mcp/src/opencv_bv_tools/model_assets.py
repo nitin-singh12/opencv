@@ -2,11 +2,14 @@
 # See the LICENSE file distributed with this application for license terms.
 """Download pinned model assets at setup time and use them offline at runtime."""
 import argparse
+from contextlib import contextmanager
+import errno
 import hashlib
 import os
 from pathlib import Path
 import sys
 import tempfile
+import time
 from urllib.error import URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, build_opener
@@ -89,10 +92,51 @@ class HTTPSRedirects(HTTPRedirectHandler):
         return super().redirect_request(request, fp, code, message, headers, newurl)
 
 
+@contextmanager
+def _cache_lock(destination, timeout=600):
+    """Serialize installers across threads/processes; closing releases ownership."""
+    # Keep this file: deleting it can give waiters different lock identities.
+    with (destination / '.install.lock').open('a+b') as stream:
+        if os.name == 'nt':
+            import msvcrt
+        else:
+            import fcntl
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                if os.name == 'nt':
+                    stream.seek(0)
+                    msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError as exc:
+                if exc.errno not in (errno.EACCES, errno.EAGAIN):
+                    raise
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('Another model installation is still using this cache; retry later.') from exc
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            if os.name == 'nt':
+                stream.seek(0)
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
 def install_models(source_dir=None, *, search=False):
     """Populate the cache with pinned bytes; never used by inference workers."""
     destination = search_cache_directory() if search else cache_directory()
     destination.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with _cache_lock(destination):
+        _install_models(destination, source_dir, search)
+    return destination
+
+
+def _install_models(destination, source_dir, search):
+    """Check and publish assets while holding the cache's installer lock."""
     for name, (size, expected, file_id) in (SEARCH_MODELS if search else MODELS).items():
         target = destination / name
         if _matches(target, size, expected):
@@ -123,7 +167,6 @@ def install_models(source_dir=None, *, search=False):
         finally:
             if temp_name is not None:
                 Path(temp_name).unlink(missing_ok=True)
-    return destination
 
 
 def main(argv=None):

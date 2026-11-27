@@ -1,6 +1,6 @@
 # Third-party notices
 
-This index describes dependencies and bundled assets for `0.10.0.dev18`. The
+This index describes dependencies and bundled assets for `0.10.0.dev19`. The
 application uses Apache-2.0; see [LICENSING.md](LICENSING.md). Preserve
 the full notices in each installed distribution, including native components.
 Headline licence names alone are not a complete redistribution review.
